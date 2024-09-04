@@ -2,9 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sendMessage, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
-
-let liveChatRoomId = null; // Store globally for now
-let userRoomId = null; // Store user room ID globally for now
+const roomManager = require('../utils/roomManager'); // Import the room manager
 
 // Outgoing Webhook: User to Agent
 router.post('/', async (req, res) => {
@@ -22,8 +20,9 @@ router.post('/', async (req, res) => {
 
         try {
             await createOmnichannelContact(userToken, sender_username);
-            liveChatRoomId = await createLiveChatRoom(userToken);
-            userRoomId = room_id;  // Store user's room ID
+            const liveChatRoomId = await createLiveChatRoom(userToken);
+            roomManager.setLiveChatRoomId(liveChatRoomId); // Store live chat room ID
+            roomManager.setUserRoomId(room_id);  // Store user's room ID
 
             const sessionMessage = `You are now in a session with a representative who will assist you.`;
             await sendMessage(room_id, sessionMessage);
@@ -34,6 +33,7 @@ router.post('/', async (req, res) => {
             res.status(500).send('Failed to process the webhook');
         }
     } else if (message_text.toLowerCase() === 'bye') {
+        const liveChatRoomId = roomManager.getLiveChatRoomId();
         if (liveChatRoomId) {
             try {
                 const farewellToUser = 'You have left the conversation with the representative';
@@ -42,8 +42,8 @@ router.post('/', async (req, res) => {
                 await sendMessage(room_id, farewellToUser);
                 await sendMessage(liveChatRoomId, farewellToManager);
 
-                liveChatRoomId = null;
-                userRoomId = null;
+                roomManager.setLiveChatRoomId(null);  // Reset room IDs
+                roomManager.setUserRoomId(null);
                 res.status(200).send('Session ended and farewell message sent.');
             } catch (error) {
                 console.error('Error sending farewell messages:', error);
@@ -53,6 +53,7 @@ router.post('/', async (req, res) => {
             res.status(200).send('No active session to end.');
         }
     } else {
+        const liveChatRoomId = roomManager.getLiveChatRoomId();
         if (liveChatRoomId) {
             try {
                 await sendMessage(liveChatRoomId, message_text);

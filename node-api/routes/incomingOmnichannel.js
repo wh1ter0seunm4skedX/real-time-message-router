@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sendMessage } = require('../utils/rocketChat');
-
-// Import userRoomId and liveChatRoomId from the outgoingWebhook module
-const outgoingWebhook = require('./outgoingWebhook');
-let userRoomId = outgoingWebhook.userRoomId; // Get the user's room ID from outgoingWebhook
+const roomManager = require('../utils/roomManager'); // Import the room manager
 
 // Incoming Webhook for Omnichannel: Manage messages from agent to user
 router.post('/', async (req, res) => {
@@ -21,7 +18,8 @@ router.post('/', async (req, res) => {
         // Print the message to console
         console.log(`Message from Agent in LiveChat room: "${messageText}" (Sent by: ${senderUsername} - ID: ${senderId})`);
 
-        if (userRoomId) {  // Use the userRoomId stored globally
+        const userRoomId = roomManager.getUserRoomId();  // Get the user's room ID
+        if (userRoomId) {
             try {
                 // Forward the message back to the user's room
                 await sendMessage(userRoomId, messageText);
