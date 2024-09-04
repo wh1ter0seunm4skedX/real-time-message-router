@@ -4,6 +4,10 @@ const { sendMessage, createOmnichannelContact, createLiveChatRoom } = require('.
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager'); // Import the room manager
 
+let lastMessageId = null;  // Store the last processed message ID
+const botUsername = 'rocket.cat';  // Replace this with your bot's username or user ID
+let lastMessageTimestamp = 0;  // Timestamp for last message sent
+
 // Outgoing Webhook: User to Agent
 router.post('/', async (req, res) => {
     const message = req.body;
@@ -11,6 +15,30 @@ router.post('/', async (req, res) => {
     const sender_username = message.user_name || "unknown";
     const message_text = message.text || "No message";
     const room_id = message.channel_id || "unknown";
+    const message_id = message.message_id || "unknown";  // Add message ID
+    const currentTimestamp = Date.now();
+
+    // Check if the message was already processed
+    if (message_id === lastMessageId) {
+        console.log('Duplicate message received, ignoring.');
+        return res.status(200).send('Duplicate message ignored.');
+    }
+
+    // Check if the sender is the bot itself or message is system message to avoid loop
+    if (sender_username === botUsername || message.isSystemMessage) {
+        console.log('Message sent by bot or marked as system message, ignoring to prevent loop.');
+        return res.status(200).send('Bot message or system message ignored.');
+    }
+
+    // Check if enough time (3 seconds) has passed since the last message was sent
+    if (currentTimestamp - lastMessageTimestamp < 3000) {
+        console.log('Message sent too soon after the last one, ignoring.');
+        return res.status(200).send('Message sent too soon, ignoring.');
+    }
+
+    // Update lastMessageId to current message and lastMessageTimestamp to current time
+    lastMessageId = message_id;
+    lastMessageTimestamp = currentTimestamp;
 
     if (message_text.toLowerCase() === 'hey') {
         const userToken = generateRandomToken();
@@ -25,7 +53,7 @@ router.post('/', async (req, res) => {
             roomManager.setUserRoomId(room_id);  // Store user's room ID
 
             const sessionMessage = `You are now in a session with a representative who will assist you.`;
-            await sendMessage(room_id, sessionMessage);
+            await sendMessage(room_id, sessionMessage, true);  // Set isSystemMessage to true
             
             res.status(200).send('User registered and live chat room created successfully');
         } catch (error) {
@@ -39,8 +67,8 @@ router.post('/', async (req, res) => {
                 const farewellToUser = 'You have left the conversation with the representative';
                 const farewellToManager = 'The user has left the conversation.';
                 
-                await sendMessage(room_id, farewellToUser);
-                await sendMessage(liveChatRoomId, farewellToManager);
+                await sendMessage(room_id, farewellToUser, true);  // Set isSystemMessage to true
+                await sendMessage(liveChatRoomId, farewellToManager, true);  // Set isSystemMessage to true
 
                 roomManager.setLiveChatRoomId(null);  // Reset room IDs
                 roomManager.setUserRoomId(null);
