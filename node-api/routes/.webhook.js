@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
+const { sendMessage, sendMessageToUser, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 
-let liveChatRoomId = null; // Store globally for now
+let liveChatRoomId = null;
+let userRoomId = null;
 
+// Outgoing webhook endpoint
 router.post('/', async (req, res) => {
     const message = req.body;
     const sender_id = message.user_id || "unknown";
@@ -14,9 +16,8 @@ router.post('/', async (req, res) => {
 
     if (message_text.toLowerCase() === 'hey') {
         const userToken = generateRandomToken();
-        console.log(`Received message "hey" from user ${sender_username} (ID: ${sender_id})`);
-        console.log(`Room ID: ${room_id}`);
-        console.log(`User token: ${userToken}`);
+        userRoomId = room_id; 
+
 
         try {
             await createOmnichannelContact(userToken, sender_username);
@@ -24,6 +25,11 @@ router.post('/', async (req, res) => {
             
             const sessionMessage = `You are now in a session with a representative who will assist you.`;
             await sendMessage(room_id, sessionMessage);
+
+            console.log(`Received message "hey" from user ${sender_username} (ID: ${sender_id})`);
+            console.log(`User's Room ID: ${room_id}`);
+            console.log(`User visitor token: ${userToken}`);
+            console.log(`Representative's Room ID: ${liveChatRoomId}`);
             
             res.status(200).send('User registered and live chat room created successfully');
         } catch (error) {
@@ -49,6 +55,7 @@ router.post('/', async (req, res) => {
             res.status(200).send('No active session to end.');
         }
     } else {
+        // if there is an active room with the user, forward the message to the live chat room
         if (liveChatRoomId) {
             try {
                 await sendMessage(liveChatRoomId, message_text);
@@ -60,6 +67,28 @@ router.post('/', async (req, res) => {
         } else {
             res.status(200).send('No active session. Message not forwarded.');
         }
+    }
+});
+
+// Incoming webhook endpoint
+router.post('/incoming', async (req, res) => {
+    const message = req.body;
+    const sender_id = message.user_id || "unknown";
+    const message_text = message.text || "No message";
+
+    console.log(`Received message from LiveChat room (ID: ${liveChatRoomId}) from user ${sender_id}: ${message_text}`);
+
+    if (userRoomId) {
+        try {
+            // Forward the message to the user's room
+            await sendMessageToUser(userRoomId, message_text);
+            res.status(200).send('Message forwarded to user room.');
+        } catch (error) {
+            console.error('Error forwarding message to user room:', error);
+            res.status(500).send('Failed to forward message to user room');
+        }
+    } else {
+        res.status(400).send('No user room available.');
     }
 });
 

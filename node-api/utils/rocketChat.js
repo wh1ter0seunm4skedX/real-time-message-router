@@ -3,8 +3,7 @@ const axios = require('axios');
 const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
 const AUTH_TOKEN = process.env.AUTH_TOKEN;
 const USER_ID = process.env.USER_ID;
-
-console.log('Rocket Chat URL:', ROCKET_CHAT_URL);  // Add this line to debug
+// const INCOMING_WEBHOOK_URL = process.env.INCOMING_WEBHOOK_URL;  
 
 const headers = {
     'X-Auth-Token': AUTH_TOKEN,
@@ -12,26 +11,43 @@ const headers = {
 };
 
 async function sendMessage(channel, text) {
-    await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
-        text,
-        channel
-    }, { headers });
+    try {
+        await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {  
+            text,
+            channel
+        }, { headers });
+        console.log(`Message sent to channel ${channel}: ${text}`); 
+    } catch (error) {
+        console.error('Error sending message:', error.response ? error.response.data : error.message); 
+    }
 }
 
 async function createOmnichannelContact(token, name) {
-    const response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/omnichannel/contact`, {
-        token,
-        name
-    }, { headers });
-    return response.data;
+    try {
+        const response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/omnichannel/contact`, { 
+            token,
+            name
+        }, { headers });
+        return response.data;
+    } catch (error) {
+        console.error('Error creating omnichannel contact:', error.response ? error.response.data : error.message);  
+        throw error;
+    }
 }
 
 async function createLiveChatRoom(token) {
-    const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/livechat/room`, {
-        params: { token },
-        headers
-    });
-    return response.data.room._id;
+    try {
+        const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/livechat/room`, {  
+            params: { token },
+            headers
+        });
+        console.log('Live chat room created:', response.data);
+        return response.data.room._id;
+    } catch (error) {
+        console.error('Error creating live chat room:', error.response ? error.response.data : error.message);
+        throw error;
+    }
 }
+
 
 module.exports = { sendMessage, createOmnichannelContact, createLiveChatRoom };
