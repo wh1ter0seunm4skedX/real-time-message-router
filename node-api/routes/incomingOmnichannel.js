@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendToRocketCatWithAgent, sendToUserWithRocketCat } = require('../utils/rocketChat'); // Ensure both functions are imported
+const { sendToRocketCatWithAgent, sendToUserWithRocketCat } = require('../utils/rocketChat'); // Make sure both functions are imported
 const roomManager = require('../utils/roomManager');
 
 let lastProcessedAgentMessageId = null;
@@ -51,10 +51,10 @@ router.post('/', async (req, res) => {
             // First, send the message to the agent's room with rocket.cat
             await sendToRocketCatWithAgent(messageText, senderId);
 
-            console.log(`--- [incomingOmnichannel.js] --- Forwarding message to specific user room with rocket.cat. Message: "${messageText}"`);
+            console.log(`--- [incomingOmnichannel.js] --- Forwarding message to user room with rocket.cat. Message: "${messageText}"`);
                     
-            // Attempt to send to user with rocket.cat using the specific format
-            let success = await sendToUserWithRocketCat(messageText, "TnMZmrHTJbs4SqyCA");  // Send message to specific user room
+            // Attempt to send to user with rocket.cat using the `userRoomId` from `roomManager`
+            let success = await sendToUserWithRocketCat(messageText);  // Send message to specific user room
                     
             if (success) {
                 console.log('--- [incomingOmnichannel.js] --- Message successfully forwarded to user room.');

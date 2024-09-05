@@ -1,5 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
+const roomManager = require('../utils/roomManager');
 
 const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
 
@@ -144,11 +145,15 @@ async function sendToRocketCatWithAgent(messageText, agentId) {
     }
 }
 
-
-
-async function sendToUserWithRocketCat(messageText, userRoomId) {
+async function sendToUserWithRocketCat(messageText) {
     try {
-        // Use the credentials of rocket.cat
+        const userRoomId = roomManager.getUserRoomId();
+
+        if (!userRoomId) {
+            console.error('--- [rocketChat.js] --- User room ID is not set. Cannot send message.');
+            return false;
+        }
+
         const headers = {
             'X-Auth-Token': process.env.AUTH_TOKEN_ROCKETCAT,
             'X-User-Id': process.env.USER_ID_ROCKETCAT
@@ -158,9 +163,9 @@ async function sendToUserWithRocketCat(messageText, userRoomId) {
         console.log(`--- [rocketChat.js] --- Using AUTH_TOKEN: ${process.env.AUTH_TOKEN_ROCKETCAT}`);
         console.log(`--- [rocketChat.js] --- Using USER_ID: ${process.env.USER_ID_ROCKETCAT}`);
 
-        // Attempt to send to the specific user room format: "TnMZmrHTJbs4SqyCArocket.cat"
-        const channel = `TnMZmrHTJbs4SqyCArocket.cat`;
-        console.log(`--- [rocketChat.js] --- Sending message to specific user room: ${channel}`);
+        // Send using the userRoomId directly
+        const channel = userRoomId;
+        console.log(`--- [rocketChat.js] --- Sending message to user room with rocket.cat: ${channel}`);
         
         let response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
             text: messageText,
@@ -174,11 +179,12 @@ async function sendToUserWithRocketCat(messageText, userRoomId) {
             console.error(`--- [rocketChat.js] --- Error sending message: ${JSON.stringify(response.data)}`);
         }
     } catch (error) {
-        conshole.error('--- [rocketChat.js] --- Error sending message to user room with rocket.cat:', error.response ? error.response.data : error.message);
+        console.error('--- [rocketChat.js] --- Error sending message to user room with rocket.cat:', error.response ? error.response.data : error.message);
     }
 
-    return false;  // If the attempt failed, return false
+    return false;  // Return false if the attempt fails
 }
+
 
 
 
