@@ -5,6 +5,7 @@ const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager'); // Import the room manager
 
 let lastMessageId = null;  // Store the last processed message ID
+let lastProcessedUserMessageId = null;  // Store last processed message ID from user
 const botUsername = 'rocket.cat';  // Replace this with your bot's username or user ID
 let lastMessageTimestamp = 0;  // Timestamp for last message sent
 
@@ -30,15 +31,20 @@ router.post('/', async (req, res) => {
         return res.status(200).send('Bot message or system message ignored.');
     }
 
-    // Check if enough time (3 seconds) has passed since the last message was sent
-    if (currentTimestamp - lastMessageTimestamp < 3000) {
-        console.log('Message sent too soon after the last one, ignoring.');
-        return res.status(200).send('Message sent too soon, ignoring.');
+    // Check if the message is from a user and if it has already been processed
+    if (sender_username !== botUsername && message_id === lastProcessedUserMessageId) {
+        console.log('Duplicate message received from user, ignoring.');
+        return res.status(200).send('Duplicate message ignored.');
     }
 
     // Update lastMessageId to current message and lastMessageTimestamp to current time
     lastMessageId = message_id;
     lastMessageTimestamp = currentTimestamp;
+
+    // Update lastProcessedUserMessageId if the sender is a user
+    if (sender_username !== botUsername) {
+        lastProcessedUserMessageId = message_id;
+    }
 
     if (message_text.toLowerCase() === 'hey') {
         const userToken = generateRandomToken();
