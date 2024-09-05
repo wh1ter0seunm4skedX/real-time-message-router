@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage } = require('../utils/rocketChat');
+const { sendToRocketCatWithAgent, sendToUserWithRocketCat } = require('../utils/rocketChat'); // Ensure both functions are imported
 const roomManager = require('../utils/roomManager');
 
 let lastProcessedAgentMessageId = null;
@@ -38,26 +38,30 @@ router.post('/', async (req, res) => {
             senderId = process.env.USER_ID_AGENT;  // Use USER_ID_AGENT from .env
         }
 
+        // Prevent loop: check if message is from rocket.cat
+        if (senderId === process.env.USER_ID_ROCKETCAT) {
+            console.log('--- [incomingOmnichannel.js] --- Message is from rocket.cat, not forwarding to avoid loop.');
+            return res.status(200).send('Message from rocket.cat ignored.');
+        }
+
         // Determine if the sender is an agent or user
         if (senderId === process.env.USER_ID_AGENT) {  // Check if sender is agent
             console.log(`--- [incomingOmnichannel.js] --- Message from Agent in LiveChat room: "${messageText}" (Sent by ID: ${senderId})`);
 
-            const userRoomId = roomManager.getUserRoomId();  // Get the user's room ID
-            console.log(`--- [incomingOmnichannel.js] --- User room ID for forwarding message: ${userRoomId}`);
+            // First, send the message to the agent's room with rocket.cat
+            await sendToRocketCatWithAgent(messageText, senderId);
 
-            if (userRoomId) {
-                try {
-                    console.log(`--- [incomingOmnichannel.js] --- Forwarding message to user room. Message: "${messageText}"`);
-                    await sendMessage(userRoomId, messageText, senderId);  // Send message to user room
-                    console.log('--- [incomingOmnichannel.js] --- Message successfully forwarded to user room.');
-                    res.status(200).send('Message forwarded to user room.');
-                } catch (error) {
-                    console.error('--- [incomingOmnichannel.js] --- Error forwarding message to user room:', error);
-                    res.status(500).send('Failed to forward message to user room');
-                }
+            console.log(`--- [incomingOmnichannel.js] --- Forwarding message to specific user room with rocket.cat. Message: "${messageText}"`);
+                    
+            // Attempt to send to user with rocket.cat using the specific format
+            let success = await sendToUserWithRocketCat(messageText, "TnMZmrHTJbs4SqyCA");  // Send message to specific user room
+                    
+            if (success) {
+                console.log('--- [incomingOmnichannel.js] --- Message successfully forwarded to user room.');
+                res.status(200).send('Message forwarded to user room.');
             } else {
-                console.log('--- [incomingOmnichannel.js] --- No user room available for forwarding message.');
-                res.status(200).send('No user room available.');
+                console.log('--- [incomingOmnichannel.js] --- Failed to send message to user room with the specified format.');
+                res.status(500).send('Failed to forward message to user room.');
             }
         } else {
             console.log(`--- [incomingOmnichannel.js] --- Message received from non-agent (sender ID: ${senderId}), ignoring.`);

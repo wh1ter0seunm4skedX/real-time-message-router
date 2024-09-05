@@ -37,24 +37,6 @@ const getAuthHeaders = (senderId) => {
     }
 };
 
-// Function to send a message to a channel
-async function sendMessage(channel, text, senderId, isSystemMessage = false) {
-    try {
-        const message = isSystemMessage ? `${text} [SYSTEM]` : text;
-        const headers = getAuthHeaders(senderId);
-
-        console.log(`--- [rocketChat.js] --- Sending message to channel ${channel} with senderId ${senderId}`);
-        await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
-            text: message,
-            channel
-        }, { headers });
-
-        console.log(`--- [rocketChat.js] --- Message sent to channel ${channel}: ${message}`);
-    } catch (error) {
-        console.error('--- [rocketChat.js] --- Error sending message:', error.response ? error.response.data : error.message);
-    }
-}
-
 async function createOmnichannelContact(senderId, token, name) {
     try {
         const headers = getAuthHeaders(senderId);
@@ -103,4 +85,102 @@ async function sendIncomingWebhookMessage(text, incomingWebhookUrl) {
     }
 }
 
-module.exports = { sendMessage, createOmnichannelContact, createLiveChatRoom, sendIncomingWebhookMessage };
+// Function to send a message to a channel
+async function sendMessage(channel, text, senderId, isSystemMessage = false) {
+    try {
+        const message = isSystemMessage ? `${text} [SYSTEM]` : text;
+        const headers = getAuthHeaders(senderId);
+
+        console.log(`--- [rocketChat.js] --- Sending message to channel ${channel} with senderId ${senderId}`);
+        await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
+            text: message,
+            channel
+        }, { headers });
+
+        console.log(`--- [rocketChat.js] --- Message sent to channel ${channel}: ${message}`);
+    } catch (error) {
+        console.error('--- [rocketChat.js] --- Error sending message:', error.response ? error.response.data : error.message);
+    }
+}
+
+// Function to send a message from agent to agent's room with rocket.cat
+async function sendToRocketCatWithAgent(messageText, agentId) {
+    try {
+        const headers = getAuthHeaders(agentId); // Using agent credentials
+        let channel1 = `rocket.cat${agentId}`;
+        let channel2 = `${agentId}rocket.cat`;
+
+        // Check if message is already from rocket.cat
+        if (agentId === process.env.USER_ID_ROCKETCAT) {
+            console.log('--- [rocketChat.js] --- Message is already from rocket.cat, not sending again to avoid loop.');
+            return; // Avoid loop
+        }
+
+        console.log(`--- [rocketChat.js] --- Attempting to send message to rocket.cat for agent ${agentId}`);
+        
+        // Try first channel format
+        console.log(`--- [rocketChat.js] --- Sending message to channel (format 1): ${channel1}`);
+        let response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
+            text: messageText,
+            channel: channel1
+        }, { headers });
+
+        if (!response.data.success) {
+            // If the first format fails, try the second
+            console.log(`--- [rocketChat.js] --- First channel format failed: ${channel1}, trying ${channel2}`);
+            response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
+                text: messageText,
+                channel: channel2
+            }, { headers });
+        }
+
+        if (response.data.success) {
+            console.log(`--- [rocketChat.js] --- Message sent to agent's room with rocket.cat: ${messageText}`);
+        } else {
+            console.error('--- [rocketChat.js] --- Failed to send message to agent room with rocket.cat:', response.data.error);
+        }
+    } catch (error) {
+        console.error('--- [rocketChat.js] --- Error sending message to agent room with rocket.cat:', error.response ? error.response.data : error.message);
+    }
+}
+
+
+
+async function sendToUserWithRocketCat(messageText, userRoomId) {
+    try {
+        // Use the credentials of rocket.cat
+        const headers = {
+            'X-Auth-Token': process.env.AUTH_TOKEN_ROCKETCAT,
+            'X-User-Id': process.env.USER_ID_ROCKETCAT
+        };
+
+        console.log(`--- [rocketChat.js] --- Attempting to send message as rocket.cat`);
+        console.log(`--- [rocketChat.js] --- Using AUTH_TOKEN: ${process.env.AUTH_TOKEN_ROCKETCAT}`);
+        console.log(`--- [rocketChat.js] --- Using USER_ID: ${process.env.USER_ID_ROCKETCAT}`);
+
+        // Attempt to send to the specific user room format: "TnMZmrHTJbs4SqyCArocket.cat"
+        const channel = `TnMZmrHTJbs4SqyCArocket.cat`;
+        console.log(`--- [rocketChat.js] --- Sending message to specific user room: ${channel}`);
+        
+        let response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
+            text: messageText,
+            channel: channel
+        }, { headers });
+
+        if (response.data && response.data.success) {
+            console.log(`--- [rocketChat.js] --- Message successfully sent to user room: ${channel}`);
+            return true;  // Message sent successfully
+        } else {
+            console.error(`--- [rocketChat.js] --- Error sending message: ${JSON.stringify(response.data)}`);
+        }
+    } catch (error) {
+        conshole.error('--- [rocketChat.js] --- Error sending message to user room with rocket.cat:', error.response ? error.response.data : error.message);
+    }
+
+    return false;  // If the attempt failed, return false
+}
+
+
+
+
+module.exports = { sendToRocketCatWithAgent, sendToUserWithRocketCat, sendMessage, createOmnichannelContact, createLiveChatRoom, sendIncomingWebhookMessage };
