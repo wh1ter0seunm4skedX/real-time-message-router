@@ -5,10 +5,10 @@ const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
 
 // Function to determine user type based on senderId
 const determineUserType = (senderId) => {
-    console.log(`Received sender ID: ${senderId}`); 
-    console.log(`Configured Admin User ID: ${process.env.USER_ID_ADMIN}`);
-    console.log(`Configured Agent User ID: ${process.env.USER_ID_AGENT}`);
-    console.log(`Configured Regular User ID: ${process.env.USER_ID_USER}`);
+    console.log(`--- [rocketChat.js] --- Received sender ID: ${senderId}`);
+    console.log(`--- [rocketChat.js] --- Configured Admin User ID: ${process.env.USER_ID_ADMIN}`);
+    console.log(`--- [rocketChat.js] --- Configured Agent User ID: ${process.env.USER_ID_AGENT}`);
+    console.log(`--- [rocketChat.js] --- Configured Regular User ID: ${process.env.USER_ID_USER}`);
 
     if (senderId === process.env.USER_ID_ADMIN) {
         return { userType: 'admin', token: process.env.AUTH_TOKEN_ADMIN, userId: process.env.USER_ID_ADMIN };
@@ -17,7 +17,7 @@ const determineUserType = (senderId) => {
     } else if (senderId === process.env.USER_ID_USER) {
         return { userType: 'user', token: process.env.AUTH_TOKEN_USER, userId: process.env.USER_ID_USER };
     } else {
-        console.error(`Error: User ID "${senderId}" does not match any known users.`);
+        console.error(`--- [rocketChat.js] --- Error: User ID "${senderId}" does not match any known users.`);
         throw new Error('User ID does not match any known users.');
     }
 };
@@ -26,13 +26,13 @@ const determineUserType = (senderId) => {
 const getAuthHeaders = (senderId) => {
     try {
         const { userType, token, userId } = determineUserType(senderId);
-        console.log(`User type: ${userType}, Token: ${token}, User ID: ${userId}`); // Display user details
+        console.log(`--- [rocketChat.js] --- User type: ${userType}, Token: ${token}, User ID: ${userId}`); // Display user details
         return {
             'X-Auth-Token': token,
             'X-User-Id': userId
         };
     } catch (error) {
-        console.error('Failed to determine user type:', error.message);
+        console.error('--- [rocketChat.js] --- Failed to determine user type:', error.message);
         throw error;
     }
 };
@@ -43,15 +43,15 @@ async function sendMessage(channel, text, senderId, isSystemMessage = false) {
         const message = isSystemMessage ? `${text} [SYSTEM]` : text;
         const headers = getAuthHeaders(senderId);
 
-        console.log(`Sending message to channel ${channel} with senderId ${senderId}`);
+        console.log(`--- [rocketChat.js] --- Sending message to channel ${channel} with senderId ${senderId}`);
         await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
             text: message,
             channel
         }, { headers });
 
-        console.log(`Message sent to channel ${channel}: ${message}`);
+        console.log(`--- [rocketChat.js] --- Message sent to channel ${channel}: ${message}`);
     } catch (error) {
-        console.error('Error sending message:', error.response ? error.response.data : error.message);
+        console.error('--- [rocketChat.js] --- Error sending message:', error.response ? error.response.data : error.message);
     }
 }
 
@@ -59,7 +59,7 @@ async function createOmnichannelContact(senderId, token, name) {
     try {
         const headers = getAuthHeaders(senderId);
 
-        console.log(`Creating Omnichannel Contact for User ID: ${senderId}, Token: ${token}, User ID: ${headers['X-User-Id']}`);
+        console.log(`--- [rocketChat.js] --- Creating Omnichannel Contact for User ID: ${senderId}, Token: ${token}, User ID: ${headers['X-User-Id']}`);
 
         const response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/omnichannel/contact`, {
             token,
@@ -67,7 +67,7 @@ async function createOmnichannelContact(senderId, token, name) {
         }, { headers });
         return response.data;
     } catch (error) {
-        console.error('Error creating omnichannel contact:', error.response ? error.response.data : error.message);
+        console.error('--- [rocketChat.js] --- Error creating omnichannel contact:', error.response ? error.response.data : error.message);
         throw error;
     }
 }
@@ -76,16 +76,16 @@ async function createLiveChatRoom(senderId, token) {
     try {
         const headers = getAuthHeaders(senderId);
 
-        console.log(`Creating Live Chat Room for User ID: ${senderId}, Token: ${token}, User ID: ${headers['X-User-Id']}`);
+        console.log(`--- [rocketChat.js] --- Creating Live Chat Room for User ID: ${senderId}, Token: ${token}, User ID: ${headers['X-User-Id']}`);
 
         const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/livechat/room`, {
             params: { token },
             headers
         });
-        console.log('Live chat room created:', response.data);
+        console.log('--- [rocketChat.js] --- Live chat room created:', response.data);
         return response.data.room._id;
     } catch (error) {
-        console.error('Error creating live chat room:', error.response ? error.response.data : error.message);
+        console.error('--- [rocketChat.js] --- Error creating live chat room:', error.response ? error.response.data : error.message);
         throw error;
     }
 }
@@ -97,9 +97,9 @@ async function sendIncomingWebhookMessage(text, incomingWebhookUrl) {
         }, {
             headers: { 'Content-Type': 'application/json' }
         });
-        console.log(`Message sent via Incoming Webhook: ${text}`);
+        console.log(`--- [rocketChat.js] --- Message sent via Incoming Webhook: ${text}`);
     } catch (error) {
-        console.error('Error sending message via Incoming Webhook:', error.response ? error.response.data : error.message);
+        console.error('--- [rocketChat.js] --- Error sending message via Incoming Webhook:', error.response ? error.response.data : error.message);
     }
 }
 
