@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
     }
 
     // Start or reset inactivity timer for the room
-    roomManager.startInactivityTimer(closeRoom, 5000);
+    roomManager.startInactivityTimer(closeRoom, roomManager.getTimeoutDuration());  // Close the room after 30 seconds of inactivity
 
     if (sender_id === process.env.USER_ID_USER) {  // If the sender is a user
         const liveChatRoomId = roomManager.getLiveChatRoomId();

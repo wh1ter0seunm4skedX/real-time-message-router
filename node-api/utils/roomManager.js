@@ -3,9 +3,14 @@ const roomData = {
     liveChatRoomId: null, // Room ID for the live chat session 
     lastMessageTime: null, // Timestamp of the last message
     closeTimeout: null, // Timeout for closing the session
-    userToken: null // Token for the user session
+    userToken: null, // Token for the user session
+    timeoutDuration: 30 * 1000 // Timeout duration (currently set to 30 seconds)
   };
   
+  function getTimeoutDuration() {
+    return roomData.timeoutDuration;
+  }
+
   function setUserRoomId(roomId) {
     roomData.userRoomId = roomId;
   }
@@ -38,7 +43,7 @@ const roomData = {
     return roomData.userToken;
   }
 
-  function startInactivityTimer(callback, timeoutDuration = 5000) { 
+  function startInactivityTimer(callback, timeoutDuration) { 
     if (roomData.closeTimeout) {
         clearTimeout(roomData.closeTimeout);
     }
@@ -79,5 +84,6 @@ const roomData = {
     setLastMessageTime,
     getLastMessageTime,
     startInactivityTimer,
-    stopInactivityTimer
+    stopInactivityTimer,
+    getTimeoutDuration
 };
