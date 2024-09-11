@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
+const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom} = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
+
 
 let lastMessageId = null;
 let lastProcessedUserMessageId = null;
 const botUsername = 'rocket.cat';
 let lastMessageTimestamp = 0;
+let userToken = null;
 
 router.post('/', async (req, res) => {
     console.log('--- [outgoingWebhook.js] --- Outgoing webhook triggered.');
@@ -45,65 +47,38 @@ router.post('/', async (req, res) => {
         lastProcessedUserMessageId = message_id;
     }
 
-    // Check if message is from user and manage sessions accordingly
+    // Start or reset inactivity timer for the room
+    roomManager.startInactivityTimer(closeRoom, 5000);
+
     if (sender_id === process.env.USER_ID_USER) {  // If the sender is a user
-        if (message_text.toLowerCase() === 'hey') {
-            console.log(`--- [outgoingWebhook.js] --- Received message "hey" from user ${sender_username} (ID: ${sender_id})`);
-            const liveChatRoomId = roomManager.getLiveChatRoomId();
+        const liveChatRoomId = roomManager.getLiveChatRoomId();
 
-            if (!liveChatRoomId) {  // Only create a new room if there isn't already one active
-                const userToken = generateRandomToken();
-                console.log(`--- [outgoingWebhook.js] --- Room ID: ${room_id}`);
-                console.log(`--- [outgoingWebhook.js] --- User token: ${userToken}`);
+        if (!liveChatRoomId) {  // Only create a new room if there isn't already one active
+            userToken = generateRandomToken();
+            roomManager.setUserToken(userToken);
+            console.log(`--- [outgoingWebhook.js] --- Room ID: ${room_id}`);
+            console.log(`--- [outgoingWebhook.js] --- User token: ${userToken}`);
+            
+            try {
+                await createOmnichannelContact(sender_id, userToken, sender_username);
+                const newLiveChatRoomId = await createLiveChatRoom(sender_id, userToken);
+                roomManager.setLiveChatRoomId(newLiveChatRoomId);
+                roomManager.setUserRoomId(room_id);
 
-                try {
-                    await createOmnichannelContact(sender_id, userToken, sender_username);
-                    const newLiveChatRoomId = await createLiveChatRoom(sender_id, userToken);
-                    roomManager.setLiveChatRoomId(newLiveChatRoomId);
-                    roomManager.setUserRoomId(room_id);
+                const sessionMessageToUser = `You are now in a session with a representative who will assist you.`;
+                await sendMessage(room_id, sessionMessage, sender_id, true);
 
-                    const sessionMessage = `You are now in a session with a representative who will assist you.`;
-                    await sendMessage(room_id, sessionMessage, sender_id, true);
-
-                    console.log('--- [outgoingWebhook.js] --- User registered and live chat room created successfully.');
-                    res.status(200).send('User registered and live chat room created successfully');
-                } catch (error) {
-                    console.error('--- [outgoingWebhook.js] --- Error processing the webhook:', error);
-                    res.status(500).send('Failed to process the webhook');
-                }
-            } else {
-                console.log('--- [outgoingWebhook.js] --- Live chat room already exists. Forwarding message to the existing room.');
-                try {
-                    await sendMessage(liveChatRoomId, message_text, sender_id);
-                    console.log('--- [outgoingWebhook.js] --- Message forwarded to live chat room.');
-                    res.status(200).send('Message forwarded to live chat room.');
-                } catch (error) {
-                    console.error('--- [outgoingWebhook.js] --- Error forwarding message to live chat room:', error);
-                    res.status(500).send('Failed to forward message to live chat room');
-                }
-            }
-        } else if (message_text.toLowerCase() === 'bye') {
-            console.log(`--- [outgoingWebhook.js] --- User sent "bye", ending session.`);
-            const liveChatRoomId = roomManager.getLiveChatRoomId();
-            if (liveChatRoomId) {
-                try {
-                    await sendMessage(room_id, 'The session has ended.', sender_id, true);
-                    roomManager.setLiveChatRoomId(null);
-                    roomManager.setUserRoomId(null);
-                    console.log('--- [outgoingWebhook.js] --- Session ended and user room cleared.');
-                    res.status(200).send('Session ended successfully.');
-                } catch (error) {
-                    console.error('--- [outgoingWebhook.js] --- Error ending session:', error);
-                    res.status(500).send('Failed to end session.');
-                }
-            } else {
-                console.log('--- [outgoingWebhook.js] --- No active session to end.');
-                res.status(200).send('No active session to end.');
+                const sessionMessageToAgent = `A new user has joined the session.`;
+                await sendMessage(newLiveChatRoomId, sessionMessageToAgent, sender_id, true);
+                
+                console.log('--- [outgoingWebhook.js] --- User registered and live chat room created successfully.');
+                res.status(200).send('User registered and live chat room created successfully');
+            } catch (error) {
+                console.error('--- [outgoingWebhook.js] --- Error processing the webhook:', error);
+                res.status(500).send('Failed to process the webhook');
             }
         } else {
-            // Handle other messages as regular messages
-            const liveChatRoomId = roomManager.getLiveChatRoomId();
-            console.log(`--- [outgoingWebhook.js] --- Forwarding user message in active session to live chat room.`);
+            console.log('--- [outgoingWebhook.js] --- Live chat room already exists. Forwarding message to the existing room.');
             try {
                 await sendMessage(liveChatRoomId, message_text, sender_id);
                 console.log('--- [outgoingWebhook.js] --- Message forwarded to live chat room.');
@@ -118,6 +93,5 @@ router.post('/', async (req, res) => {
         res.status(200).send('Non-user message ignored.');
     }
 });
-
 
 module.exports = router;

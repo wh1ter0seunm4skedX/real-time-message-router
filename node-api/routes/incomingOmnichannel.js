@@ -44,16 +44,13 @@ router.post('/', async (req, res) => {
             return res.status(200).send('Message from rocket.cat ignored.');
         }
 
-        // Determine if the sender is an agent or user
         if (senderId === process.env.USER_ID_AGENT) {  // Check if sender is agent
             console.log(`--- [incomingOmnichannel.js] --- Message from Agent in LiveChat room: "${messageText}" (Sent by ID: ${senderId})`);
 
-            // First, send the message to the agent's room with rocket.cat
             await sendToRocketCatWithAgent(messageText, senderId);
 
             console.log(`--- [incomingOmnichannel.js] --- Forwarding message to user room with rocket.cat. Message: "${messageText}"`);
                     
-            // Attempt to send to user with rocket.cat using the `userRoomId` from `roomManager`
             let success = await sendToUserWithRocketCat(messageText);  // Send message to specific user room
                     
             if (success) {

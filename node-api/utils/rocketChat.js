@@ -1,8 +1,8 @@
 const axios = require('axios');
 require('dotenv').config();
 const roomManager = require('../utils/roomManager');
-
 const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
+const { userToken } = require('../routes/outgoingWebhook');
 
 // Function to determine user type based on senderId
 const determineUserType = (senderId) => {
@@ -72,7 +72,7 @@ async function createLiveChatRoom(senderId, token) {
         throw error;
     }
 }
-
+/*
 async function sendIncomingWebhookMessage(text, incomingWebhookUrl) {
     try {
         await axios.post(incomingWebhookUrl, {
@@ -85,6 +85,7 @@ async function sendIncomingWebhookMessage(text, incomingWebhookUrl) {
         console.error('--- [rocketChat.js] --- Error sending message via Incoming Webhook:', error.response ? error.response.data : error.message);
     }
 }
+*/
 
 // Function to send a message to a channel
 async function sendMessage(channel, text, senderId, isSystemMessage = false) {
@@ -185,8 +186,56 @@ async function sendToUserWithRocketCat(messageText) {
     return false;  // Return false if the attempt fails
 }
 
+// Function to handle incoming message and reset inactivity timer
+async function handleIncomingMessage(roomId, senderId) {
+    try {
+        // Update last message time and reset inactivity timer
+        roomManager.setLastMessageTime(new Date());
 
+        // Start or reset the inactivity timer
+        roomManager.startInactivityTimer(() => closeRoom(roomId), 5 * 1000);
 
+        console.log(`--- [rocketChat.js] --- Inactivity timer reset for room ${roomId}`);
+    } catch (error) {
+        console.error('--- [rocketChat.js] --- Error handling incoming message:', error.message);
+    }
+}
 
+// Function to close the room due to inactivity
+async function closeRoom() {
+    try {
+        const roomId = roomManager.getLiveChatRoomId();
+        const userToken = roomManager.getUserToken();
+        
+        console.log(`--- [rocketChat.js] --- roomId is: ${roomId}`);
+        console.log(`--- [rocketChat.js] --- userToken is: ${userToken}`);
 
-module.exports = { sendToRocketCatWithAgent, sendToUserWithRocketCat, sendMessage, createOmnichannelContact, createLiveChatRoom, sendIncomingWebhookMessage };
+        if (!roomId || !userToken) {
+            console.error('--- [rocketChat.js] --- Room ID or user token is missing. Cannot close room.');
+            return;
+        }
+
+        const headers = {
+            'X-Auth-Token': process.env.AUTH_TOKEN_ROCKETCAT, 
+            'X-User-Id': process.env.USER_ID_ROCKETCAT 
+        };
+
+        await axios.post(`${ROCKET_CHAT_URL}/api/v1/livechat/room.close`, { rid: roomId, token: userToken }, { headers });
+
+        console.log(`--- [rocketChat.js] --- Room ${roomId} closed due to inactivity.`);
+        sendMessage(roomId,`The room is closed due to inactivity over 5 minutes`, process.env.USER_ID_AGENT); // Notify user
+    } catch (error) {
+        console.error('--- [rocketChat.js] --- Error closing room:', error.message);
+    }
+}
+
+module.exports = { 
+    handleIncomingMessage,
+    closeRoom,
+    sendToRocketCatWithAgent,
+    sendToUserWithRocketCat,
+    sendMessage,
+    createOmnichannelContact,
+    createLiveChatRoom, 
+    //sendIncomingWebhookMessage
+};
