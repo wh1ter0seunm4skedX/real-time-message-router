@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const outgoingWebhookRoutes = require('./routes/outgoingWebhook');
-const omnichannelWebhookRoutes = require('./routes/incomingOmnichannel');
+const userToAgent = require('./routes/userToAgentHandler');
+const agentToUser = require('./routes/agentToUserHandler');
 const logger = require('./middlewares/logger');
 const devMenu = require('./utils/devMenu');
 
@@ -11,8 +11,8 @@ app.use(express.json());  // Middleware to parse JSON requests
 app.use(logger);  // Custom logger middleware
 
 // Routes
-app.use('/webhook/outgoing', outgoingWebhookRoutes);  // Outgoing Webhook User to Agent
-app.use('/webhook/omnichannel', omnichannelWebhookRoutes);  // Outgoing Webhook Agent to User
+app.use('/webhook/outgoing', userToAgent);  // Outgoing Webhook User to Agent
+app.use('/webhook/omnichannel', agentToUser);  // Outgoing Webhook Agent to User
 
 // Developer Routes
 app.post('/dev/close-all-livechat-rooms', async (req, res) => {  // New route for developer actions
