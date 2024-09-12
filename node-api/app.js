@@ -11,8 +11,8 @@ app.use(express.json());  // Middleware to parse JSON requests
 app.use(logger);  // Custom logger middleware
 
 // Routes
-app.use('/webhook/outgoing', userToAgent);  // Outgoing Webhook User to Agent
-app.use('/webhook/omnichannel', agentToUser);  // Outgoing Webhook Agent to User
+app.use('/webhook/user2agent', userToAgent);  // Outgoing Webhook User to Agent
+app.use('/webhook/agent2user', agentToUser);  // Outgoing Webhook Agent to User
 
 // Developer Routes
 app.post('/dev/close-all-livechat-rooms', async (req, res) => {  // New route for developer actions
