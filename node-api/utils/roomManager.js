@@ -4,7 +4,8 @@ const roomData = {
     lastMessageTime: null, // Timestamp of the last message
     closeTimeout: null, // Timeout for closing the session
     userToken: null, // Token for the user session
-    timeoutDuration: 30 * 1000 // Timeout duration (currently set to 30 seconds)
+    countDownInterval: null, // Interval for countdown
+    timeoutDuration: 5 * 1000 // Timeout duration
   };
   
   function getTimeoutDuration() {
@@ -43,28 +44,25 @@ const roomData = {
     return roomData.userToken;
   }
 
-  function startInactivityTimer(callback, timeoutDuration) { 
-    if (roomData.closeTimeout) {
-        clearTimeout(roomData.closeTimeout);
-    }
+  function startInactivityTimer(callback) { 
+    stopInactivityTimer();  // Stop the timer if it's already running
 
-    const interval = 1000;  // Interval for countdown in milliseconds
-    let remainingTime = timeoutDuration / interval;  // Calculate remaining time in seconds
+    let remainingTime = roomData.timeoutDuration / 1000; 
 
-    const countdown = setInterval(() => {
-        console.log(`Timer: ${remainingTime} seconds remaining...`);
-        remainingTime--;
-
-        if (remainingTime < 0) {
-            clearInterval(countdown);
-            callback();  // Execute callback when timeout is reached
-        }
-    }, interval);
+    roomData.countDownInterval = setInterval(() => {
+      remainingTime--;  
+      console.log(`Timer: ${remainingTime} seconds remaining...`);
+      
+      if (remainingTime <= 0) {
+        clearInterval(roomData.countDownInterval);
+        callback();  // Execute callback when timeout is reached
+      }
+    }, 1000);
 
     roomData.closeTimeout = setTimeout(() => {
-        clearInterval(countdown);  // Clear the countdown interval
+        clearInterval(roomData.countDownInterval);  // Clear the countdown interval
         callback();  // Execute callback when timeout is reached
-    }, timeoutDuration);
+    }, roomData.timeoutDuration);
 }
   
   function stopInactivityTimer() {
@@ -72,6 +70,24 @@ const roomData = {
       clearTimeout(roomData.closeTimeout);
       roomData.closeTimeout = null;
     }
+    if(roomData.countDownInterval){
+      clearInterval(roomData.countDownInterval);
+      roomData.countDownInterval = null;
+    }
+  }
+
+// Function to check if timer is running
+function isTimerRunning() {
+  return roomData.closeTimeout !== null || roomData.countdownInterval !== null;
+}
+
+  // Function to reset room data after inactivity timeout
+  function resetRoomData() {
+    roomData.userRoomId = null;
+    roomData.liveChatRoomId = null;
+    roomData.userToken = null;
+    roomData.lastMessageTime = null;
+    stopInactivityTimer();
   }
 
   module.exports = {
@@ -85,5 +101,7 @@ const roomData = {
     getLastMessageTime,
     startInactivityTimer,
     stopInactivityTimer,
-    getTimeoutDuration
+    getTimeoutDuration,
+    resetRoomData,
+    isTimerRunning
 };

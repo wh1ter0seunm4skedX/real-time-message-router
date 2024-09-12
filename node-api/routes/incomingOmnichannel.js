@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sendToRocketCatWithAgent, sendToUserWithRocketCat } = require('../utils/rocketChat'); // Make sure both functions are imported
 const roomManager = require('../utils/roomManager');
+const { closeRoom } = require('../utils/rocketChat');
 
 let lastProcessedAgentMessageId = null;
 
@@ -13,10 +14,10 @@ router.post('/', async (req, res) => {
     if (Array.isArray(messages) && messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
         const messageText = lastMessage.msg || "No message";
-        let senderId = lastMessage.u._id || "unknown";  // Get the sender ID
-        const senderUsername = lastMessage.u.username || "unknown";  // Get the sender username
+        let senderId = lastMessage.u._id || "unknown";  
+        const senderUsername = lastMessage.u.username || "unknown"; 
         const messageId = lastMessage._id;
-        const isSystemMessage = lastMessage.t || false;  // Check if it's a system message
+        const isSystemMessage = lastMessage.t || false; 
 
         console.log(`--- [incomingOmnichannel.js] --- Received message details: messageText="${messageText}", senderId="${senderId}", senderUsername="${senderUsername}", messageId="${messageId}", isSystemMessage="${isSystemMessage}"`);
 
@@ -31,6 +32,15 @@ router.post('/', async (req, res) => {
             console.log('--- [incomingOmnichannel.js] --- System message received, ignoring.');
             return res.status(200).send('System message ignored.');
         }
+
+        // Check if timer is already running
+        if (roomManager.isTimerRunning()) {
+            console.log('--- [incomingOmnichannel.js] --- Timer is already running. Stopping the current timer.');
+            roomManager.stopInactivityTimer(); // Stop the current timer
+        }
+
+        // Start or reset inactivity timer for the room
+        roomManager.startInactivityTimer(closeRoom);
 
         // Check if sender is agent by username and adjust senderId accordingly
         if (senderUsername === 'agent') {  // If the sender's username is 'agent'

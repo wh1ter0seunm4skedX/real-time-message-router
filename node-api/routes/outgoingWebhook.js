@@ -4,7 +4,6 @@ const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom} = 
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
-
 let lastMessageId = null;
 let lastProcessedUserMessageId = null;
 const botUsername = 'rocket.cat';
@@ -47,8 +46,13 @@ router.post('/', async (req, res) => {
         lastProcessedUserMessageId = message_id;
     }
 
+    if(roomManager.isTimerRunning()) {
+        console.log('--- [outgoingWebhook.js] --- Inactivity timer is running. Resetting timer.');
+        roomManager.stopInactivityTimer();
+    }
+
     // Start or reset inactivity timer for the room
-    roomManager.startInactivityTimer(closeRoom, roomManager.getTimeoutDuration());  // Close the room after 30 seconds of inactivity
+    roomManager.startInactivityTimer(closeRoom); 
 
     if (sender_id === process.env.USER_ID_USER) {  // If the sender is a user
         const liveChatRoomId = roomManager.getLiveChatRoomId();
@@ -66,7 +70,7 @@ router.post('/', async (req, res) => {
                 roomManager.setUserRoomId(room_id);
 
                 const sessionMessageToUser = `You are now in a session with a representative who will assist you.`;
-                await sendMessage(room_id, sessionMessage, sender_id, true);
+                await sendMessage(room_id, sessionMessageToUser, sender_id, true);
 
                 const sessionMessageToAgent = `A new user has joined the session.`;
                 await sendMessage(newLiveChatRoomId, sessionMessageToAgent, sender_id, true);
