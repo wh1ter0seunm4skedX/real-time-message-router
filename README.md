@@ -1,6 +1,6 @@
 # ShiftLink
 
-ShiftLink is a Node.js application that integrates call center representatives with shift managers through the Rocket.Chat system UI. It facilitates real-time communication by handling incoming webhooks and managing live chat sessions, with automatic room closure based on inactivity.
+ShiftLink is a Node.js application that extends the current Rocket.Chat UI to create omnichannels within the interface. It integrates call center representatives with shift managers, enabling seamless communication and a more efficient workflow. Leveraging the Livechat feature, ShiftLink manages a queue of live chat sessions to ensure optimal handling of customer interactions.
 
 ## Features
 
