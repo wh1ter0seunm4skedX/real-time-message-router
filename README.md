@@ -67,8 +67,8 @@ ShiftLink is a Node.js application that integrates call center representatives w
 ## Code Structure
 
 - **`app.js`**: Main entry point for the application, initializes the server and routes.
-- **`routes/incomingOmnichannel.js`**: Handles incoming webhooks from Rocket.Chat and manages live chat sessions for agents.
-- **`routes/outgoingWebhook.js`**: Handles outgoing webhooks from users and forwards messages to agents.
+- **`routes/agentToUserHandler.js`**: Handles incoming webhooks from Rocket.Chat and manages live chat sessions for agents.
+- **`routes/userToAgentHandler.js`**: Handles outgoing webhooks from users and forwards messages to agents.
 - **`utils/rocketChat.js`**: Contains helper functions to interact with Rocket.Chat APIs, such as creating contacts, sending messages, and managing rooms.
 - **`utils/helpers.js`**: General helper functions, such as generating random tokens for user sessions.
 - **`utils/roomManager.js`**: Manages room states, tokens, and inactivity timers for live chat sessions.
