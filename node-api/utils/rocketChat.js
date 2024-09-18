@@ -94,6 +94,8 @@ async function sendMessage(channel, text, senderId, isSystemMessage = false) {
 async function sendToRocketCatWithAgent(messageText, agentId) {
     try {
         const headers = getAuthHeaders(agentId); // Using agent credentials
+
+        // Here we try two different channel formats to send the message
         let channel1 = `rocket.cat${agentId}`;
         let channel2 = `${agentId}rocket.cat`;
 
@@ -214,7 +216,7 @@ async function closeRoom() {
 
         if (userRoomId) {
             console.log(`--- [rocketChat.js] --- now is sending a message to the user room: ${userRoomId}`);
-            await sendToUserWithRocketCat('The room is closed due to inactivity over x minutes');
+            await sendToUserWithRocketCat('The room is closed due to inactivity over 30 seconds');
             console.log(`--- [rocketChat.js] --- System message sent to user room: ${userRoomId}`);
         }
 

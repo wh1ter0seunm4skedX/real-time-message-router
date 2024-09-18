@@ -5,7 +5,7 @@ const roomData = {
     closeTimeout: null, // Timeout for closing the session
     userToken: null, // Token for the user session
     countDownInterval: null, // Interval for countdown
-    timeoutDuration: 5 * 1000 // Timeout duration
+    timeoutDuration: 30 * 1000 // Timeout duration
   };
   
   function getTimeoutDuration() {
@@ -78,7 +78,7 @@ const roomData = {
 
 // Function to check if timer is running
 function isTimerRunning() {
-  return roomData.closeTimeout !== null || roomData.countdownInterval !== null;
+  return roomData.closeTimeout !== null || roomData.countDownInterval !== null;
 }
 
   // Function to reset room data after inactivity timeout

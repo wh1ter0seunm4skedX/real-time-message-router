@@ -11,7 +11,7 @@ let lastMessageTimestamp = 0;
 let userToken = null;
 
 router.post('/', async (req, res) => {
-    console.log('--- [outgoingWebhook.js] --- Outgoing webhook triggered.');
+    console.log('--- [userToAgent] --- Outgoing webhook from user was triggered.');
 
     const message = req.body;
     const sender_id = message.user_id || "unknown";
@@ -21,21 +21,21 @@ router.post('/', async (req, res) => {
     const message_id = message.message_id || "unknown";
     const currentTimestamp = Date.now();
 
-    console.log(`--- [outgoingWebhook.js] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
+    console.log(`--- [userToAgent] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
 
     if (message_id === lastMessageId) {
-        console.log('--- [outgoingWebhook.js] --- Duplicate message received, ignoring.');
+        console.log('--- [userToAgent] --- Duplicate message received, ignoring.');
         return res.status(200).send('Duplicate message ignored.');
     }
 
     // Prevent loop: Check if the message was sent by bot or is a system message
     if (sender_username === botUsername || message.isSystemMessage) {
-        console.log('--- [outgoingWebhook.js] --- Message sent by bot or marked as system message, ignoring to prevent loop.');
+        console.log('--- [userToAgent] --- Message sent by bot or marked as system message, ignoring to prevent loop.');
         return res.status(200).send('Bot message or system message ignored.');
     }
 
     if (sender_username !== botUsername && message_id === lastProcessedUserMessageId) {
-        console.log('--- [outgoingWebhook.js] --- Duplicate message received from user, ignoring.');
+        console.log('--- [userToAgent] --- Duplicate message received from user, ignoring.');
         return res.status(200).send('Duplicate message ignored.');
     }
 
@@ -47,7 +47,7 @@ router.post('/', async (req, res) => {
     }
 
     if(roomManager.isTimerRunning()) {
-        console.log('--- [outgoingWebhook.js] --- Inactivity timer is running. Resetting timer.');
+        console.log('--- [userToAgent] --- Inactivity timer is running. Resetting timer.');
         roomManager.stopInactivityTimer();
     }
 
@@ -60,8 +60,8 @@ router.post('/', async (req, res) => {
         if (!liveChatRoomId) {  // Only create a new room if there isn't already one active
             userToken = generateRandomToken();
             roomManager.setUserToken(userToken);
-            console.log(`--- [outgoingWebhook.js] --- Room ID: ${room_id}`);
-            console.log(`--- [outgoingWebhook.js] --- User token: ${userToken}`);
+            console.log(`--- [userToAgent] --- Room ID: ${room_id}`);
+            console.log(`--- [userToAgent] --- User token: ${userToken}`);
             
             try {
                 await createOmnichannelContact(sender_id, userToken, sender_username);
@@ -75,25 +75,25 @@ router.post('/', async (req, res) => {
                 const sessionMessageToAgent = `A new user has joined the session.`;
                 await sendMessage(newLiveChatRoomId, sessionMessageToAgent, sender_id, true);
                 
-                console.log('--- [outgoingWebhook.js] --- User registered and live chat room created successfully.');
+                console.log('--- [userToAgent] --- User registered and live chat room created successfully.');
                 res.status(200).send('User registered and live chat room created successfully');
             } catch (error) {
-                console.error('--- [outgoingWebhook.js] --- Error processing the webhook:', error);
+                console.error('--- [userToAgent] --- Error processing the webhook:', error);
                 res.status(500).send('Failed to process the webhook');
             }
         } else {
-            console.log('--- [outgoingWebhook.js] --- Live chat room already exists. Forwarding message to the existing room.');
+            console.log('--- [userToAgent] --- Live chat room already exists. Forwarding message to the existing room.');
             try {
                 await sendMessage(liveChatRoomId, message_text, sender_id);
-                console.log('--- [outgoingWebhook.js] --- Message forwarded to live chat room.');
+                console.log('--- [userToAgent] --- Message forwarded to live chat room.');
                 res.status(200).send('Message forwarded to live chat room.');
             } catch (error) {
-                console.error('--- [outgoingWebhook.js] --- Error forwarding message to live chat room:', error);
+                console.error('--- [userToAgent] --- Error forwarding message to live chat room:', error);
                 res.status(500).send('Failed to forward message to live chat room');
             }
         }
     } else {
-        console.log('--- [outgoingWebhook.js] --- Message received from non-user or agent. Ignoring.');
+        console.log('--- [userToAgent] --- Message received from non-user or agent. Ignoring.');
         res.status(200).send('Non-user message ignored.');
     }
 });
