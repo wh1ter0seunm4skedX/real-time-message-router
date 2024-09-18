@@ -1,107 +1,125 @@
-const roomData = {
-    userRoomId: null, // Room ID for the user session (his rocket.cat room)
-    liveChatRoomId: null, // Room ID for the live chat session 
-    lastMessageTime: null, // Timestamp of the last message
-    closeTimeout: null, // Timeout for closing the session
-    userToken: null, // Token for the user session
-    countDownInterval: null, // Interval for countdown
-    timeoutDuration: 30 * 1000 // Timeout duration
-  };
-  
-  function getTimeoutDuration() {
-    return roomData.timeoutDuration;
-  }
+// roomManager.js
 
-  function setUserRoomId(roomId) {
-    roomData.userRoomId = roomId;
-  }
-  
-  function getUserRoomId() {
-    return roomData.userRoomId;
-  }
-  
-  function setLiveChatRoomId(roomId) {
-    roomData.liveChatRoomId = roomId;
-  }
-  
-  function getLiveChatRoomId() {
-    return roomData.liveChatRoomId;
-  }
+const sessions = new Map(); // Map to hold session data for each userId
+const TIMEOUT_DURATION = 30 * 1000; // Timeout duration in milliseconds
 
-  function getLastMessageTime() {
-    return roomData.lastMessageTime;
+function getSession(userId) {
+  if (!sessions.has(userId)) {
+    // Initialize session data for new user
+    sessions.set(userId, {
+      userRoomId: null,        // Room ID for the user session (his rocket.cat room)
+      liveChatRoomId: null,    // Room ID for the live chat session
+      lastMessageTime: null,   // Timestamp of the last message
+      closeTimeout: null,      // Timeout for closing the session
+      userToken: null,         // Token for the user session
+      countDownInterval: null, // Interval for countdown
+      timeoutDuration: TIMEOUT_DURATION
+    });
   }
-
-  function setLastMessageTime(time) {
-    roomData.lastMessageTime = time;
-  }
-
-  function setUserToken(token) {
-    roomData.userToken = token;
-  }
-
-  function getUserToken() {
-    return roomData.userToken;
-  }
-
-  function startInactivityTimer(callback) { 
-    stopInactivityTimer();  // Stop the timer if it's already running
-
-    let remainingTime = roomData.timeoutDuration / 1000; 
-
-    roomData.countDownInterval = setInterval(() => {
-      remainingTime--;  
-      console.log(`Timer: ${remainingTime} seconds remaining...`);
-      
-      if (remainingTime <= 0) {
-        clearInterval(roomData.countDownInterval);
-        callback();  // Execute callback when timeout is reached
-      }
-    }, 1000);
-
-    roomData.closeTimeout = setTimeout(() => {
-        clearInterval(roomData.countDownInterval);  // Clear the countdown interval
-        callback();  // Execute callback when timeout is reached
-    }, roomData.timeoutDuration);
-}
-  
-  function stopInactivityTimer() {
-    if(roomData.closeTimeout){
-      clearTimeout(roomData.closeTimeout);
-      roomData.closeTimeout = null;
-    }
-    if(roomData.countDownInterval){
-      clearInterval(roomData.countDownInterval);
-      roomData.countDownInterval = null;
-    }
-  }
-
-// Function to check if timer is running
-function isTimerRunning() {
-  return roomData.closeTimeout !== null || roomData.countDownInterval !== null;
+  return sessions.get(userId);
 }
 
-  // Function to reset room data after inactivity timeout
-  function resetRoomData() {
-    roomData.userRoomId = null;
-    roomData.liveChatRoomId = null;
-    roomData.userToken = null;
-    roomData.lastMessageTime = null;
-    stopInactivityTimer();
-  }
+function setUserRoomId(userId, roomId) {
+  const session = getSession(userId);
+  session.userRoomId = roomId;
+}
 
-  module.exports = {
-    setUserRoomId,
-    getUserRoomId,
-    setLiveChatRoomId,
-    getLiveChatRoomId,
-    setUserToken,
-    getUserToken,
-    setLastMessageTime,
-    getLastMessageTime,
-    startInactivityTimer,
-    stopInactivityTimer,
-    getTimeoutDuration,
-    resetRoomData,
-    isTimerRunning
+function getUserRoomId(userId) {
+  const session = getSession(userId);
+  return session.userRoomId;
+}
+
+function setLiveChatRoomId(userId, roomId) {
+  const session = getSession(userId);
+  session.liveChatRoomId = roomId;
+}
+
+function getLiveChatRoomId(userId) {
+  const session = getSession(userId);
+  return session.liveChatRoomId;
+}
+
+function setLastMessageTime(userId, time) {
+  const session = getSession(userId);
+  session.lastMessageTime = time;
+}
+
+function getLastMessageTime(userId) {
+  const session = getSession(userId);
+  return session.lastMessageTime;
+}
+
+function setUserToken(userId, token) {
+  const session = getSession(userId);
+  session.userToken = token;
+}
+
+function getUserToken(userId) {
+  const session = getSession(userId);
+  return session.userToken;
+}
+
+function startInactivityTimer(userId, callback) {
+  const session = getSession(userId);
+  stopInactivityTimer(userId); // Stop the timer if it's already running
+
+  let remainingTime = session.timeoutDuration / 1000;
+
+  session.countDownInterval = setInterval(() => {
+    remainingTime--;
+    console.log(`User ${userId} Timer: ${remainingTime} seconds remaining...`);
+
+    if (remainingTime <= 0) {
+      clearInterval(session.countDownInterval);
+      session.countDownInterval = null;
+    }
+  }, 1000);
+
+  session.closeTimeout = setTimeout(() => {
+    clearInterval(session.countDownInterval); // Clear the countdown interval
+    session.countDownInterval = null;
+    callback(userId); // Execute callback when timeout is reached, passing userId
+  }, session.timeoutDuration);
+}
+
+function stopInactivityTimer(userId) {
+  const session = getSession(userId);
+
+  if (session.closeTimeout) {
+    clearTimeout(session.closeTimeout);
+    session.closeTimeout = null;
+  }
+  if (session.countDownInterval) {
+    clearInterval(session.countDownInterval);
+    session.countDownInterval = null;
+  }
+}
+
+function isTimerRunning(userId) {
+  const session = getSession(userId);
+  return session.closeTimeout !== null || session.countDownInterval !== null;
+}
+
+function resetRoomData(userId) {
+  sessions.delete(userId);
+}
+
+function getTimeoutDuration() {
+  return TIMEOUT_DURATION;
+}
+
+module.exports = {
+  setUserRoomId,
+  getUserRoomId,
+  setLiveChatRoomId,
+  getLiveChatRoomId,
+  setUserToken,
+  getUserToken,
+  setLastMessageTime,
+  getLastMessageTime,
+  startInactivityTimer,
+  stopInactivityTimer,
+  getTimeoutDuration,
+  resetRoomData,
+  isTimerRunning
 };

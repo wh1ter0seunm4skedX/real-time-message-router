@@ -1,20 +1,23 @@
+// app.js
+
 require('dotenv').config();
 const express = require('express');
-const userToAgent = require('./routes/userToAgentHandler');
-const agentToUser = require('./routes/agentToUserHandler');
 const logger = require('./middlewares/logger');
-const devMenu = require('./utils/devMenu');
+const app = express();
 
 // Create an Express application
-const app = express();
-app.use(express.json());  // Middleware to parse JSON requests
-app.use(logger);  // Custom logger middleware
+app.use(express.json()); 
+app.use(logger);  
 
 // Routes
+const userToAgent = require('./routes/userToAgentHandler');
+const agentToUser = require('./routes/agentToUserHandler');
+
 app.use('/webhook/user2agent', userToAgent);  
 app.use('/webhook/agent2user', agentToUser); 
 
 // Developer Routes
+const devMenu = require('./utils/devMenu');
 app.post('/dev/close-all-livechat-rooms', async (req, res) => { 
     try {
         await devMenu.closeAllOpenLiveChatRooms(); 
@@ -25,7 +28,6 @@ app.post('/dev/close-all-livechat-rooms', async (req, res) => {
     }
 });
 
-// Start the server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
