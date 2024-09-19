@@ -19,6 +19,14 @@ function getSession(userId) {
   return sessions.get(userId);
 }
 
+function getUserIdByLiveChatRoomId(liveChatRoomId) {
+  for (let [userId, session] of sessions) {
+    if (session.liveChatRoomId === liveChatRoomId) {
+      return userId;
+    }
+  }
+  return null;
+}
 function setUserRoomId(userId, roomId) {
   const session = getSession(userId);
   session.userRoomId = roomId;
@@ -108,7 +116,11 @@ function getTimeoutDuration() {
   return TIMEOUT_DURATION;
 }
 
+
+
 module.exports = {
+  sessions, 
+  getUserIdByLiveChatRoomId, 
   setUserRoomId,
   getUserRoomId,
   setLiveChatRoomId,

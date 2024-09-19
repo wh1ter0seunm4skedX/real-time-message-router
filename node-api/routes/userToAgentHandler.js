@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom} = require('../utils/rocketChat');
+const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom, isUserAnAgent} = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -10,8 +10,9 @@ const botUsername = 'rocket.cat';
 
 let lastMessageId = null;
 let lastProcessedUserMessageId = null;
-let lastMessageTimestamp = 0;
-let userToken = null;
+
+// let lastMessageTimestamp = 0;
+// let userToken = null;
 
 router.post('/', async (req, res) => {
     console.log('--- [userToAgent] --- Outgoing webhook from user was triggered.');
@@ -48,6 +49,14 @@ router.post('/', async (req, res) => {
     if (sender_username !== botUsername) {
         lastProcessedUserMessageId = message_id;
     }
+
+    // Check if sender is an agent
+    const senderIsAgent = await isUserAnAgent(sender_id);
+    if (senderIsAgent) {
+        console.log('--- [userToAgent] --- Message sent by agent, ignoring to prevent loop.');
+        return res.status(200).send('Agent message ignored.');
+    }
+
     try{
         // start or reset inactivity timer for the the user
         if(roomManager.isTimerRunning(sender_id)) {
