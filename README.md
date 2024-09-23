@@ -1,79 +1,87 @@
-# ShiftLink
+# ShiftLink 🚦
 
-ShiftLink is a Node.js application that extends the current Rocket.Chat UI to create omnichannels within the interface. It integrates call center representatives with shift managers, enabling seamless communication and a more efficient workflow. Leveraging the Livechat feature, ShiftLink manages a queue of live chat sessions to ensure optimal handling of customer interactions.
+## 🔍 Project Overview
 
-## Features
+**ShiftLink** aims to bridge the gap between call center agents and their supervisors, making the communication process more efficient and organized. With ShiftLink, users can initiate conversations, route messages, and manage interactions without leaving the Rocket.Chat environment. The project is perfect for teams needing a reliable, integrated chat solution to manage shifts, announcements, and urgent updates.
 
-- **Incoming and Outgoing Webhook Handling**: Processes messages from Rocket.Chat and manages chat sessions, both incoming and outgoing.
-- **Live Chat Room Management**: Creates, maintains, and closes live chat rooms for active sessions based on user and agent activity.
-- **User Registration and Token Management**: Registers users as Omnichannel contacts in Rocket.Chat, managing tokens securely.
-- **Message Forwarding and System Messages**: Forwards messages between users and agents and sends system messages to indicate room closure.
-- **Inactivity Timer Management**: Automatically closes chat rooms after a period of inactivity, with the ability to reset or stop timers based on new messages.
-- **Error Handling and Logging**: Improved error handling and logging throughout the application for easier debugging and maintenance.
+### 🌟 Key Features
 
-## Installation
+- **Real-Time Messaging**: Connect agents and managers instantly with a dedicated communication channel.
+- **Automated Routing**: Automatically route messages to the appropriate channels or individuals based on predefined rules.
+- **API Integration**: Seamless integration with Rocket.Chat via REST APIs to manage users, messages, and channels.
+- **Scalable Setup**: Easily deployable using Docker and Docker Compose, making it simple to set up and manage.
+
+## 🛠️ Project Structure
+
+- **`node-api`**: The heart of the application, written in Node.js, containing all the server logic and API interactions.
+  - **`app.js`**: The main application file that starts the server and handles incoming requests.
+  - **`routes`**: Defines the API endpoints for message handling and routing.
+  - **`utils`**: Utility functions to simplify API calls to Rocket.Chat.
+  - **`middlewares`**: Middleware functions for logging, authentication, and request handling.
+
+- **Docker Compose Files**:
+  - **`compose.yml`**: Main Docker setup for deploying ShiftLink with all necessary services.
+  - **`composeWithHubot.yml`**: An extended setup including Hubot for advanced automation.
+
+- **Configuration**:
+  - **`nginx.conf`**: Configuration file for Nginx, acting as a reverse proxy to manage requests between services.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/get-started) installed on your machine.
+- [Node.js](https://nodejs.org/) (version 18+) installed for local development.
+
+### Installation
 
 1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/yourusername/ShiftLink.git
+   cd ShiftLink
+   ```
 
-    ```bash
-    git clone https://github.com/your-username/ShiftLink.git
-    ```
+2. **Configure Environment Variables**:
+   - Create a `.env` file in the `node-api` directory to set up your Rocket.Chat credentials and other required configurations.
 
-2. **Navigate to the Project Directory**:
+3. **Run the Application**:
+   Use Docker Compose to build and start the services:
+   ```bash
+   docker-compose -f compose.yml up --build
+   ```
 
-    ```bash
-    cd ShiftLink
-    ```
+4. **Access the Application**:
+   - Your Node.js server will be running, and you can start managing communications directly from Rocket.Chat.
 
-3. **Install Dependencies**:
+### Local Development
 
-    ```bash
-    npm install
-    ```
+To start the server locally without Docker, run:
+```bash
+cd node-api
+npm install
+npm start
+```
 
-4. **Set Up Environment Variables**:
+## 📚 How It Works
 
-    Create a `.env` file in the root directory and add your Rocket.Chat configuration:
+1. **Listen for Messages**: The Node.js server listens for messages directed at `rocket.cat` and triggers specific workflows based on keywords.
+2. **Automate Connections**: When users send a command like “connect,” ShiftLink automatically pairs them with an available manager or relevant channel.
+3. **Manage Chats**: The system ensures that messages are routed appropriately, logging all activities for accountability.
 
-    ```env
-    ROCKET_CHAT_URL=http://rocketchat:3000
-    AUTH_TOKEN_ADMIN=your_admin_auth_token
-    USER_ID_ADMIN=your_admin_user_id
-    AUTH_TOKEN_AGENT=your_agent_auth_token
-    USER_ID_AGENT=your_agent_user_id
-    AUTH_TOKEN_USER=your_user_auth_token
-    USER_ID_USER=your_user_user_id
-    AUTH_TOKEN_ROCKETCAT=your_rocketcat_auth_token
-    USER_ID_ROCKETCAT=your_rocketcat_user_id
-    WEBHOOK_URL=http://rocketchat:3000/hooks/your_webhook_id/your_webhook_token
-    ```
+## 🌐 Future Enhancements
 
-5. **Start the Server**:
+- **Smart Routing Algorithms**: Implement AI-based routing to connect agents to the best available managers based on past interactions.
+- **Enhanced Analytics**: Provide detailed reports on chat interactions, response times, and agent performance.
+- **Slack and Microsoft Teams Integration**: Expand beyond Rocket.Chat for broader usability.
 
-    ```bash
-    npm start
-    ```
+## 🤝 Contributing
 
-## Usage
+Contributions are welcome! To get started, fork the repository, create a new branch, and submit a pull request with your changes.
 
-- **Incoming Webhook Endpoint**: `/webhook/incoming` - Handles incoming messages from Rocket.Chat agents and manages live chat sessions.
-- **Outgoing Webhook Endpoint**: `/webhook/outgoing` - Processes outgoing messages from users to agents.
-- **Message Forwarding and Room Management**:
-  - Messages are forwarded between users and agents using Rocket.Chat APIs.
-  - Rooms are closed automatically after 5 minutes of inactivity, with a system message sent to notify the user.
-- **Error Handling**: Proper error handling ensures that all interactions are logged and that the system can recover from unexpected states.
-- **System Messages**: Custom system messages are sent when the room is closed due to inactivity, and these messages are ignored to avoid triggering unnecessary actions.
+## 📜 License
 
-## Code Structure
+This project is licensed under the MIT License. Feel free to use, modify, and distribute!
 
-- **`app.js`**: Main entry point for the application, initializes the server and routes.
-- **`routes/agentToUserHandler.js`**: Handles incoming webhooks from Rocket.Chat and manages live chat sessions for agents.
-- **`routes/userToAgentHandler.js`**: Handles outgoing webhooks from users and forwards messages to agents.
-- **`utils/rocketChat.js`**: Contains helper functions to interact with Rocket.Chat APIs, such as creating contacts, sending messages, and managing rooms.
-- **`utils/helpers.js`**: General helper functions, such as generating random tokens for user sessions.
-- **`utils/roomManager.js`**: Manages room states, tokens, and inactivity timers for live chat sessions.
-- **`middlewares/logger.js`**: Middleware for logging and debugging purposes.
+## 📬 Contact
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+For any questions or support, reach out to wh1ter0seunm4sked@gmail.com
