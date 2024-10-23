@@ -1,3 +1,5 @@
+// roomManager.js is a utility module that manages the room data and inactivity timer for the user and agent rooms. It provides functions to set and get the room IDs, user tokens, and live chat room IDs. It also starts and stops the inactivity timer for the rooms. The room data is stored in an object called roomData, which is exported for use in other modules.
+
 const roomData = {};  
 
 function initializeUserRoomData(userId) {

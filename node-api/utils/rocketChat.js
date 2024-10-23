@@ -1,3 +1,5 @@
+// rocketChat.js is a utility module that contains functions to interact with the Rocket.Chat server. It includes functions to log in a user, get authentication headers, create an Omnichannel contact, create a LiveChat room, send a message, and close a room due to inactivity. The module also includes functions to send messages from an agent to the agent's room using rocket.cat credentials and from rocket.cat to the user's room. The module is used in the agentToUserHandler.js and userToAgentHandler.js route handlers to handle incoming messages and forward them to the appropriate rooms.
+
 const axios = require('axios');
 require('dotenv').config();
 const roomManager = require('../utils/roomManager');

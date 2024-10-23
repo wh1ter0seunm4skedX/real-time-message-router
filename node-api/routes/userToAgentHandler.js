@@ -1,3 +1,5 @@
+//userToAgentHandler.js is a route handler that listens for incoming messages from the user in the chat room. It processes the message and forwards it to the agent's LiveChat room using the rocket.cat credentials. It also handles the inactivity timer for the user's room.
+
 const express = require('express');
 const router = express.Router();
 const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom, loginAndGetAuthToken } = require('../utils/rocketChat');

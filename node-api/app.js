@@ -1,3 +1,5 @@
+// app.js is the entry point for the Node.js application. It sets up the Express server, middleware, and routes.
+
 require('dotenv').config();
 const express = require('express');
 const userToAgent = require('./routes/userToAgentHandler');
