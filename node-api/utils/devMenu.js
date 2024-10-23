@@ -1,4 +1,11 @@
-//devMenu.js is a utility file that contains functions to interact with the Rocket.Chat API. It includes functions to log in to Rocket.Chat, create a livechat agent user, create a regular user, close a livechat room, and close all open livechat rooms. The functions are used in the development environment to perform administrative tasks such as creating users, closing rooms, and managing agents. The functions make use of the Rocket.Chat API endpoints to perform these actions. The file also contains environment variables to store the Rocket.Chat URL, admin credentials, and other configuration settings.
+/* devMenu.js is a utility file that contains functions to interact with the Rocket.Chat API.
+ It includes functions to log in to Rocket.Chat, create a livechat agent user, create a regular user,
+  close a livechat room, and close all open livechat rooms.
+   The functions are used in the development environment to perform administrative tasks such as creating users, 
+   closing rooms, and managing agents. The functions make use of the Rocket.Chat API endpoints to perform these actions. 
+   The file also contains environment variables to store the Rocket.Chat URL, 
+   admin credentials, and other configuration settings.
+*/
 
 const axios = require('axios');
 require('dotenv').config();

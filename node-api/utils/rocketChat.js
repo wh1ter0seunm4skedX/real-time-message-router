@@ -1,27 +1,46 @@
-// rocketChat.js is a utility module that contains functions to interact with the Rocket.Chat server. It includes functions to log in a user, get authentication headers, create an Omnichannel contact, create a LiveChat room, send a message, and close a room due to inactivity. The module also includes functions to send messages from an agent to the agent's room using rocket.cat credentials and from rocket.cat to the user's room. The module is used in the agentToUserHandler.js and userToAgentHandler.js route handlers to handle incoming messages and forward them to the appropriate rooms.
+/* rocketChat.js is a utility module that contains functions to interact with the Rocket.Chat server.
+ It includes functions to log in a user, get authentication headers, create an Omnichannel contact,
+  create a LiveChat room, send a message, and close a room due to inactivity.
+   The module also includes functions to send messages from an agent to the agent's room using rocket.cat 
+   credentials and from rocket.cat to the user's room. The module is used in the agentToUserHandler.js 
+   and userToAgentHandler.js route handlers to handle incoming messages and forward them to the appropriate rooms.
 
+*/
 const axios = require('axios');
 require('dotenv').config();
 const roomManager = require('../utils/roomManager');
 const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
 
-/*
-// Function to dynamically determine user type based on senderId passed in request
-const determineUserType = (senderId, authToken) => {
-    console.log(`--- [rocketChat.js] --- Received sender ID: ${senderId}`);
+async function getUserRole(userId) {
+    try {
+        // Set up headers with admin credentials (assuming admin can view all users)
+        const headers = {
+            'X-Auth-Token': process.env.AUTH_TOKEN_ADMIN,
+            'X-User-Id': process.env.USER_ID_ADMIN,
+        };
 
-    if (senderId === process.env.USER_ID_ADMIN) {
-        return { userType: 'admin', token: authToken || process.env.AUTH_TOKEN_ADMIN, userId: process.env.USER_ID_ADMIN };
-    } else if (senderId === process.env.USER_ID_AGENT) {
-        return { userType: 'livechat_agent', token: authToken || process.env.AUTH_TOKEN_AGENT, userId: process.env.USER_ID_AGENT };
-    } else if (senderId === process.env.USER_ID_USER) {
-        return { userType: 'user', token: authToken || process.env.AUTH_TOKEN_USER, userId: process.env.USER_ID_USER };
-    } else {
-        console.error(`--- [rocketChat.js] --- Error: User ID "${senderId}" does not match any known users.`);
-        throw new Error('User ID does not match any known users.');
+        // Make the GET request to the Rocket.Chat API
+        const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/users.info`, {
+            headers,
+            params: { userId }
+        });
+
+        if (response.data.success) {
+            const user = response.data.user;
+            const roles = user.roles || [];
+            console.log(`--- [rocketChat.js] --- User ${user.username} has roles: ${roles}`);
+            return roles;
+        } else {
+            console.error(`--- [rocketChat.js] --- Failed to retrieve user info:`, response.data.error);
+            throw new Error(response.data.error);
+        }
+    } catch (error) {
+        console.error(`--- [rocketChat.js] --- Error retrieving user role for userId ${userId}:`, error.response ? error.response.data : error.message);
+        throw error;
     }
-};
-*/
+}
+
+
 
 // Function to login a user and get their auth token (using the known default password)
 async function loginAndGetAuthToken(username) {
@@ -289,6 +308,7 @@ async function closeRoom(userId) {
 
 
 module.exports = { 
+    getUserRole,
     handleIncomingMessage,
 	loginAndGetAuthToken,
 	getAuthHeaders,

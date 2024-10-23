@@ -6,6 +6,7 @@ const userToAgent = require('./routes/userToAgentHandler');
 const agentToUser = require('./routes/agentToUserHandler');
 const logger = require('./middlewares/logger');
 const devMenu = require('./utils/devMenu');
+const { getUserRole } = require('./utils/rocketChat');
 
 const app = express();
 app.use(express.json());  
@@ -51,6 +52,22 @@ app.post('/dev/create-agent-user', async (req, res) => {
     } catch (error) {
         console.error('Error creating agent:', error.message);
         res.status(500).send('Error creating agent.');
+    }
+});
+
+// Route to get user role by userId
+app.get('/dev/get-user-role', async (req, res) => {
+    const { userId } = req.query;  // Get userId from query parameters
+    if (!userId) {
+        return res.status(400).send('Missing userId parameter');
+    }
+
+    try {
+        const roles = await getUserRole(userId);  // Call the function to get the user's roles
+        res.json({ userId, roles });  // Respond with userId and roles
+    } catch (error) {
+        console.error(`Error retrieving roles for user ${userId}:`, error.message);
+        res.status(500).send(`Error retrieving roles for user ${userId}`);
     }
 });
 

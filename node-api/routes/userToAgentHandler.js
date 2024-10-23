@@ -1,8 +1,11 @@
-//userToAgentHandler.js is a route handler that listens for incoming messages from the user in the chat room. It processes the message and forwards it to the agent's LiveChat room using the rocket.cat credentials. It also handles the inactivity timer for the user's room.
+/* userToAgentHandler.js is a route handler that listens for incoming messages from the user in the chat room.
+ It processes the message and forwards it to the agent's LiveChat room using the rocket.cat credentials.
+  It also handles the inactivity timer for the user's room.
+*/
 
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom, loginAndGetAuthToken } = require('../utils/rocketChat');
+const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom, loginAndGetAuthToken, getUserRole } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -20,9 +23,20 @@ router.post('/', async (req, res) => {
     const room_id = message.channel_id || "unknown";
     const message_id = message.message_id || "unknown";
 	const isSystemMessage = message.isSystemMessage || false;
-    const currentTimestamp = Date.now();
 
     console.log(`--- [userToAgent] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
+
+    // Check the user's role after logging the message details
+    try {
+        const roles = await getUserRole(sender_id);
+        if (!roles.includes('user') || roles.length > 1) {
+            console.log(`--- [userToAgent] --- User ${sender_username} does not have the required role. Access denied.`);
+            return res.status(403).send('Access denied. Only users with role "user" can execute this action.');
+        }
+    } catch (error) {
+        console.error(`--- [userToAgent] --- Error retrieving user roles:`, error.message);
+        return res.status(500).send('Error verifying user role.');
+    }
 
     if (message_id === lastMessageId) {
         console.log('--- [userToAgent] --- Duplicate message received, ignoring.');
@@ -34,7 +48,7 @@ router.post('/', async (req, res) => {
         console.log('--- [userToAgent] --- Message sent by bot or marked as system message, ignoring to prevent loop.');
         return res.status(200).send('Bot message or system message ignored.');
     }
-	
+
     // Prevent processing duplicate user messages
     if (sender_username !== botUsername && message_id === lastProcessedUserMessageId) {
         console.log('--- [userToAgent] --- Duplicate message received from user, ignoring.');
@@ -85,7 +99,6 @@ router.post('/', async (req, res) => {
 				const sessionMessageToAgent = `A new user has joined the session.`;
 				await sendMessage(newLiveChatRoomId, sessionMessageToAgent, process.env.AUTH_TOKEN_ROCKETCAT, process.env.USER_ID_ROCKETCAT, true);
 
-
                 console.log('--- [userToAgent] --- User registered and live chat room created successfully.');
                 res.status(200).send('User registered and live chat room created successfully');
             } catch (error) {
@@ -110,3 +123,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+
