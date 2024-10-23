@@ -9,6 +9,7 @@ networks:
 services:
   rocketchat:
     image: registry.rocket.chat/rocketchat/rocket.chat:${RELEASE:-latest}
+    container_name: rocketchat
     restart: always
     environment:
       MONGO_URL: "mongodb://mongodb:27017/rocketchat?replicaSet=rs0"
@@ -24,6 +25,7 @@ services:
 
   mongodb:
     image: docker.io/bitnami/mongodb:5.0
+    container_name: mongodb
     restart: always
     ports:
       - "27017:27017"
@@ -39,6 +41,7 @@ services:
 
   node-api:
     image: node:16
+    container_name: node-api
     volumes:
       - ./node-api:/usr/src/app 
     working_dir: /usr/src/app
