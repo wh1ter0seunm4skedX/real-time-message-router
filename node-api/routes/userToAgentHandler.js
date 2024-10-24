@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom, loginAndGetAuthToken } = require('../utils/rocketChat');
+const { sendMessage, createOmnichannelContact, createLiveChatRoom, loginAndGetAuthToken, getUserRole } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -20,6 +20,18 @@ router.post('/', async (req, res) => {
     const isSystemMessage = message.isSystemMessage || false;
 
     console.log(`--- [userToAgent] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
+
+    // Step 1: Check user role before proceeding
+    try {
+        const roles = await getUserRole(sender_id);
+        if (!roles.includes('user') || roles.length > 1) {
+            console.log(`--- [userToAgent] --- User ${sender_username} does not have the "user" role. Access denied.`);
+            return res.status(403).send('Access denied. Only users with role "user" can proceed.');
+        }
+    } catch (error) {
+        console.error(`--- [userToAgent] --- Error retrieving user roles:`, error.message);
+        return res.status(500).send('Error verifying user role.');
+    }
 
     if (message_id === lastMessageId) {
         console.log('--- [userToAgent] --- Duplicate message received, ignoring.');
