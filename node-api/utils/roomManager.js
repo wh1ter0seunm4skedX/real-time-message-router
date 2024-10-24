@@ -1,9 +1,3 @@
-/* roomManager.js is a utility module that manages the room data and inactivity 
-timer for the user and agent rooms.
-It provides functions to set and get the room IDs, user tokens, and live chat room IDs.
-It also starts and stops the inactivity timer for the rooms. 
-The room data is stored in an object called roomData, which is exported for use in other modules.
-*/
 const roomData = {};  
 
 function initializeUserRoomData(userId) {
@@ -13,7 +7,9 @@ function initializeUserRoomData(userId) {
             liveChatRoomId: null, 
             lastMessageTime: null, 
             closeTimeout: null, 
-            userToken: null, 
+            userVisitorToken: null,  
+            userAuthToken: null,  
+            agentAuthToken: null, 
             countDownInterval: null,
             timeoutDuration: 30 * 1000 
         };
@@ -38,40 +34,45 @@ function getLiveChatRoomId(userId) {
     return roomData[userId]?.liveChatRoomId || null;
 }
 
-function setUserToken(userId, token) {
+function setUserVisitorToken(userId, token) {
     initializeUserRoomData(userId);
-    roomData[userId].userToken = token;
+    roomData[userId].userVisitorToken = token;
 }
 
-function getUserToken(userId) {
-    return roomData[userId]?.userToken || null;
+function getUserVisitorToken(userId) {
+    return roomData[userId]?.userVisitorToken || null;
 }
 
-
-/*
-function setLastMessageTime(userId, time) {
-    getUserData(userId).lastMessageTime = time;
+function setUserAuthToken(userId, token) {
+    initializeUserRoomData(userId);
+    roomData[userId].userAuthToken = token;
 }
 
-function getLastMessageTime(userId) {
-    return getUserData(userId).lastMessageTime;
+function getUserAuthToken(userId) {
+    return roomData[userId]?.userAuthToken || null;
 }
-*/
+
+function setAgentAuthToken(userId, token) {
+    initializeUserRoomData(userId);
+    roomData[userId].agentAuthToken = token;
+}
+
+function getAgentAuthToken(userId) {
+    return roomData[userId]?.agentAuthToken || null;
+}
 
 function startInactivityTimer(userId, callback) {
     initializeUserRoomData(userId);
-    stopInactivityTimer(userId);  // Stop the timer if it's already running
+    stopInactivityTimer(userId);
 
     let remainingTime = roomData[userId].timeoutDuration / 1000;
 
     roomData[userId].countDownInterval = setInterval(() => {
         remainingTime--;
-        console.log(`Timer: ${remainingTime} seconds remaining for user: ${userId}`);
-
         if (remainingTime <= 0) {
             clearInterval(roomData[userId].countDownInterval);
             if (typeof callback === 'function') {
-                callback(userId);  // Pass userId to the callback
+                callback(userId);
             }
         }
     }, 1000);
@@ -79,7 +80,7 @@ function startInactivityTimer(userId, callback) {
     roomData[userId].closeTimeout = setTimeout(() => {
         clearInterval(roomData[userId].countDownInterval);
         if (typeof callback === 'function') {
-            callback(userId);  // Pass userId to the callback
+            callback(userId);
         }
     }, roomData[userId].timeoutDuration);
 }
@@ -103,7 +104,9 @@ function resetRoomData(userId) {
     roomData[userId] = {
         userRoomId: null,
         liveChatRoomId: null,
-        userToken: null,
+        userVisitorToken: null,
+        userAuthToken: null,
+        agentAuthToken: null,
         lastMessageTime: null
     };
     stopInactivityTimer(userId);
@@ -114,8 +117,12 @@ module.exports = {
     getUserRoomId,
     setLiveChatRoomId,
     getLiveChatRoomId,
-    setUserToken,
-    getUserToken,
+    setUserVisitorToken,
+    getUserVisitorToken,
+    setUserAuthToken,
+    getUserAuthToken,
+    setAgentAuthToken,
+    getAgentAuthToken,
     startInactivityTimer,
     stopInactivityTimer,
     isTimerRunning,

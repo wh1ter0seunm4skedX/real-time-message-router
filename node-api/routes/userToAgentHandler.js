@@ -1,11 +1,6 @@
-/* userToAgentHandler.js is a route handler that listens for incoming messages from the user in the chat room.
- It processes the message and forwards it to the agent's LiveChat room using the rocket.cat credentials.
-  It also handles the inactivity timer for the user's room.
-*/
-
 const express = require('express');
 const router = express.Router();
-const { sendMessage, createOmnichannelContact, createLiveChatRoom, closeRoom, loginAndGetAuthToken, getUserRole } = require('../utils/rocketChat');
+const { loginAndGetAuthToken } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -22,105 +17,65 @@ router.post('/', async (req, res) => {
     const message_text = message.text || "No message";
     const room_id = message.channel_id || "unknown";
     const message_id = message.message_id || "unknown";
-	const isSystemMessage = message.isSystemMessage || false;
+    const isSystemMessage = message.isSystemMessage || false;
 
     console.log(`--- [userToAgent] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
-
-    // Check the user's role after logging the message details
-    try {
-        const roles = await getUserRole(sender_id);
-        if (!roles.includes('user') || roles.length > 1) {
-            console.log(`--- [userToAgent] --- User ${sender_username} does not have the required role. Access denied.`);
-            return res.status(403).send('Access denied. Only users with role "user" can execute this action.');
-        }
-    } catch (error) {
-        console.error(`--- [userToAgent] --- Error retrieving user roles:`, error.message);
-        return res.status(500).send('Error verifying user role.');
-    }
 
     if (message_id === lastMessageId) {
         console.log('--- [userToAgent] --- Duplicate message received, ignoring.');
         return res.status(200).send('Duplicate message ignored.');
     }
 
-    // Ignore messages sent by the bot or marked as system messages
     if (sender_username === botUsername || isSystemMessage) {
         console.log('--- [userToAgent] --- Message sent by bot or marked as system message, ignoring to prevent loop.');
         return res.status(200).send('Bot message or system message ignored.');
     }
 
-    // Prevent processing duplicate user messages
-    if (sender_username !== botUsername && message_id === lastProcessedUserMessageId) {
-        console.log('--- [userToAgent] --- Duplicate message received from user, ignoring.');
-        return res.status(200).send('Duplicate message ignored.');
-    }
-
     lastMessageId = message_id;
     lastProcessedUserMessageId = message_id;
-
-    if (sender_username !== botUsername) {
-        lastProcessedUserMessageId = message_id;
-    }
 
     if (roomManager.isTimerRunning(sender_id)) {
         console.log('--- [userToAgent] --- Inactivity timer is running. Resetting timer.');
         roomManager.stopInactivityTimer(sender_id);
     }
 
-    // Start or reset inactivity timer for the room
-    roomManager.startInactivityTimer(sender_id, closeRoom);
-
+    // Capturing the necessary details and logging them
     try {
-        // Log in the user and get the auth token for further API interactions
-        const { authToken, userId } = await loginAndGetAuthToken(sender_username);
+        // Check if userAuthToken exists for the user
+        let authToken = roomManager.getUserAuthToken(sender_id);
+        let userId;
 
-        const liveChatRoomId = roomManager.getLiveChatRoomId(sender_id);
-
-        if (!liveChatRoomId) {  // Only create a new room if there isn't already one active
-            const userToken = generateRandomToken();  // This is the userToken for the Omnichannel contact
-            roomManager.setUserToken(sender_id, userToken);
-
-            console.log(`--- [userToAgent] --- Room ID: ${room_id}`);
-            console.log(`--- [userToAgent] --- User token: ${userToken}`);
-
-            try {
-                // Create Omnichannel Contact using userToken and the correct auth headers
-                await createOmnichannelContact(authToken, userId, userToken, sender_username);
-                
-                // Create a Live Chat Room
-                const newLiveChatRoomId = await createLiveChatRoom(authToken, userId, userToken);
-                roomManager.setLiveChatRoomId(sender_id, newLiveChatRoomId);
-                roomManager.setUserRoomId(sender_id, room_id);
-
-				// Notify the user and the agent about the session using rocket.cat credentials
-				const sessionMessageToUser = `You are now in a session with a representative who will assist you.`;
-				await sendMessage(room_id, sessionMessageToUser, process.env.AUTH_TOKEN_ROCKETCAT, process.env.USER_ID_ROCKETCAT, true);
-
-				const sessionMessageToAgent = `A new user has joined the session.`;
-				await sendMessage(newLiveChatRoomId, sessionMessageToAgent, process.env.AUTH_TOKEN_ROCKETCAT, process.env.USER_ID_ROCKETCAT, true);
-
-                console.log('--- [userToAgent] --- User registered and live chat room created successfully.');
-                res.status(200).send('User registered and live chat room created successfully');
-            } catch (error) {
-                console.error('--- [userToAgent] --- Error processing the webhook:', error);
-                res.status(500).send('Failed to process the webhook');
-            }
+        if (!authToken) {
+            console.log('--- [userToAgent] --- No auth token found for user, logging in...');
+            const loginData = await loginAndGetAuthToken(sender_username);
+            authToken = loginData.authToken;
+            userId = loginData.userId;
+            roomManager.setUserAuthToken(sender_id, authToken);
         } else {
-            console.log('--- [userToAgent] --- Live chat room already exists. Forwarding message to the existing room.');
-            try {
-                await sendMessage(liveChatRoomId, message_text, authToken, userId);  // Use authToken here
-                console.log('--- [userToAgent] --- Message forwarded to live chat room.');
-                res.status(200).send('Message forwarded to live chat room.');
-            } catch (error) {
-                console.error('--- [userToAgent] --- Error forwarding message to live chat room:', error);
-                res.status(500).send('Failed to forward message to live chat room');
-            }
+            console.log('--- [userToAgent] --- Auth token found for user.');
+            userId = sender_id;  // Use stored userId if authToken exists
         }
+
+        // Capture visitor token for creating the omnichannel contact
+        let visitorToken = roomManager.getUserVisitorToken(sender_id);
+        if (!visitorToken) {
+            visitorToken = generateRandomToken();  // Generate new visitor token
+            roomManager.setUserVisitorToken(sender_id, visitorToken);
+        }
+        console.log(`--- [userToAgent] --- Captured visitor token: ${visitorToken}`);
+
+        // Log all the details we need
+        console.log(`--- [userToAgent] --- Captured session details:`);
+        console.log(`User ID: ${userId}`);
+        console.log(`Auth Token: ${authToken}`);
+        console.log(`Visitor Token: ${visitorToken}`);
+        console.log(`Room ID: ${room_id}`);
+
+        res.status(200).send('Captured all necessary details, see logs for more information.');
     } catch (error) {
-        console.error('--- [userToAgent] --- Error logging in user or processing message:', error.message);
-        res.status(500).send('Failed to process the webhook');
+        console.error('--- [userToAgent] --- Error capturing details:', error.message);
+        res.status(500).send('Error capturing details.');
     }
 });
 
 module.exports = router;
-
