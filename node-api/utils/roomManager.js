@@ -6,6 +6,7 @@ function initializeUserRoomData(userId) {
             userRoomId: null, 
             liveChatRoomId: null, 
             lastMessageTime: null, 
+            lastMessageText: null,
             closeTimeout: null, 
             userVisitorToken: null,  
             userAuthToken: null,  
@@ -61,6 +62,20 @@ function getAgentAuthToken(userId) {
     return roomData[userId]?.agentAuthToken || null;
 }
 
+function setLastMessage(userId, messageText) {
+    initializeUserRoomData(userId);
+    roomData[userId].lastMessageText = messageText;
+    roomData[userId].lastMessageTime = new Date();
+}
+
+function getLastMessage(userId) {
+    return roomData[userId]?.lastMessageText || null;
+}
+
+function getLastMessageTime(userId) {
+    return roomData[userId]?.lastMessageTime || null;
+}
+
 function startInactivityTimer(userId, callback) {
     initializeUserRoomData(userId);
     stopInactivityTimer(userId);
@@ -107,6 +122,7 @@ function resetRoomData(userId) {
         userVisitorToken: null,
         userAuthToken: null,
         agentAuthToken: null,
+        lastMessageText: null,
         lastMessageTime: null
     };
     stopInactivityTimer(userId);
@@ -123,6 +139,9 @@ module.exports = {
     getUserAuthToken,
     setAgentAuthToken,
     getAgentAuthToken,
+    setLastMessage,
+    getLastMessage,
+    getLastMessageTime,
     startInactivityTimer,
     stopInactivityTimer,
     isTimerRunning,

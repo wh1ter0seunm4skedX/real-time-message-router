@@ -98,8 +98,8 @@ async function getAuthHeaders(senderId, senderUsername) {
 async function createOmnichannelContact(authToken, userId, userToken, senderUsername) {
     try {
         const headers = {
-            'X-Auth-Token': authToken,  // Use login token here
-            'X-User-Id': userId         // Use logged-in user ID
+            'X-Auth-Token': authToken,  
+            'X-User-Id': userId        
         };
 
         console.log(`--- [rocketChat.js] --- Creating Omnichannel Contact for user with token: ${userToken}, name: ${senderUsername}`);

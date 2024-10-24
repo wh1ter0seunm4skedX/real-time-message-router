@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginAndGetAuthToken } = require('../utils/rocketChat');
+const { loginAndGetAuthToken, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -39,7 +39,10 @@ router.post('/', async (req, res) => {
         roomManager.stopInactivityTimer(sender_id);
     }
 
-    // Capturing the necessary details and logging them
+    // Store the latest message and time in the roomManager
+    roomManager.setLastMessage(sender_id, message_text);
+    console.log(`--- [userToAgent] --- Stored latest message: "${message_text}" at ${roomManager.getLastMessageTime(sender_id)}`);
+
     try {
         // Check if userAuthToken exists for the user
         let authToken = roomManager.getUserAuthToken(sender_id);
@@ -64,14 +67,32 @@ router.post('/', async (req, res) => {
         }
         console.log(`--- [userToAgent] --- Captured visitor token: ${visitorToken}`);
 
-        // Log all the details we need
-        console.log(`--- [userToAgent] --- Captured session details:`);
-        console.log(`User ID: ${userId}`);
-        console.log(`Auth Token: ${authToken}`);
-        console.log(`Visitor Token: ${visitorToken}`);
-        console.log(`Room ID: ${room_id}`);
+        // Check if a live chat room already exists
+        let liveChatRoomId = roomManager.getLiveChatRoomId(sender_id);
+        if (!liveChatRoomId) {
+            console.log(`--- [userToAgent] --- No LiveChat room found for user, creating new Omnichannel contact and room.`);
 
-        res.status(200).send('Captured all necessary details, see logs for more information.');
+            try {
+                // Create Omnichannel Contact using userToken and the correct auth headers
+                await createOmnichannelContact(authToken, userId, visitorToken, sender_username);
+
+                // Create a Live Chat Room
+                liveChatRoomId = await createLiveChatRoom(authToken, userId, visitorToken);
+                roomManager.setLiveChatRoomId(sender_id, liveChatRoomId);
+                roomManager.setUserRoomId(sender_id, room_id);
+
+                console.log(`--- [userToAgent] --- Live chat room created successfully with ID: ${liveChatRoomId}`);
+
+                // Send response confirming room creation
+                res.status(200).send(`Live chat room created successfully with ID: ${liveChatRoomId}`);
+            } catch (error) {
+                console.error('--- [userToAgent] --- Error creating Omnichannel contact or live chat room:', error.message);
+                return res.status(500).send('Failed to create Omnichannel contact or live chat room.');
+            }
+        } else {
+            console.log(`--- [userToAgent] --- Live chat room already exists with ID: ${liveChatRoomId}.`);
+            res.status(200).send(`Live chat room already exists with ID: ${liveChatRoomId}`);
+        }
     } catch (error) {
         console.error('--- [userToAgent] --- Error capturing details:', error.message);
         res.status(500).send('Error capturing details.');
