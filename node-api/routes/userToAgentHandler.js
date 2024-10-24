@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginAndGetAuthToken, createOmnichannelContact, createLiveChatRoom } = require('../utils/rocketChat');
+const { sendMessage, createOmnichannelContact, createLiveChatRoom, loginAndGetAuthToken } = require('../utils/rocketChat');
 const { generateRandomToken } = require('../utils/helpers');
 const roomManager = require('../utils/roomManager');
 
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
         roomManager.stopInactivityTimer(sender_id);
     }
 
-    // Store the latest message and time in the roomManager
+    // Capture the latest message and update in the room manager
     roomManager.setLastMessage(sender_id, message_text);
     console.log(`--- [userToAgent] --- Stored latest message: "${message_text}" at ${roomManager.getLastMessageTime(sender_id)}`);
 
@@ -83,15 +83,25 @@ router.post('/', async (req, res) => {
 
                 console.log(`--- [userToAgent] --- Live chat room created successfully with ID: ${liveChatRoomId}`);
 
-                // Send response confirming room creation
-                res.status(200).send(`Live chat room created successfully with ID: ${liveChatRoomId}`);
             } catch (error) {
                 console.error('--- [userToAgent] --- Error creating Omnichannel contact or live chat room:', error.message);
                 return res.status(500).send('Failed to create Omnichannel contact or live chat room.');
             }
-        } else {
-            console.log(`--- [userToAgent] --- Live chat room already exists with ID: ${liveChatRoomId}.`);
-            res.status(200).send(`Live chat room already exists with ID: ${liveChatRoomId}`);
+        }
+
+        // Now that we have a live chat room, send the user's message to the agent in the live chat room
+        try {
+            await sendMessage(liveChatRoomId, message_text, authToken, userId);
+            console.log(`--- [userToAgent] --- Message sent to LiveChat room ID: ${liveChatRoomId}`);
+
+            // Update last message and time in the room manager
+            roomManager.setLastMessage(sender_id, message_text);
+            console.log(`--- [userToAgent] --- Last message updated for room. Latest message: "${roomManager.getLastMessage(sender_id)}" at ${roomManager.getLastMessageTime(sender_id)}`);
+
+            res.status(200).send('Message sent successfully to LiveChat room.');
+        } catch (error) {
+            console.error('--- [userToAgent] --- Error sending message to LiveChat room:', error.message);
+            return res.status(500).send('Failed to send message to LiveChat room.');
         }
     } catch (error) {
         console.error('--- [userToAgent] --- Error capturing details:', error.message);

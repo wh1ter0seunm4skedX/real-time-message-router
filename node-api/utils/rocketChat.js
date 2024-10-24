@@ -122,8 +122,8 @@ async function createOmnichannelContact(authToken, userId, userToken, senderUser
 async function createLiveChatRoom(authToken, userId, userToken) {
     try {
         const headers = {
-            'X-Auth-Token': authToken,  // Use login token here
-            'X-User-Id': userId         // Use logged-in user ID
+            'X-Auth-Token': authToken,  
+            'X-User-Id': userId        
         };
 
         console.log(`--- [rocketChat.js] --- Creating Live Chat Room with user token: ${userToken}`);
@@ -132,7 +132,8 @@ async function createLiveChatRoom(authToken, userId, userToken) {
             params: { token: userToken },  // Use the userToken for the visitor here
             headers
         });
-        console.log('--- [rocketChat.js] --- Live chat room created:', response.data);
+        console.log('--- [rocketChat.js] --- Live chat room created');
+        //console.log('--- [rocketChat.js] --- Live chat room created:', response.data);
         return response.data.room._id;
     } catch (error) {
         console.error('--- [rocketChat.js] --- Error creating live chat room:', error.response ? error.response.data : error.message);
