@@ -62,7 +62,7 @@ router.post('/', async (req, res) => {
 
         if (!authToken) {
             console.log('--- [userToAgent] --- No auth token found for user, logging in...');
-            const loginData = await loginAndGetAuthToken(sender_username);
+            const loginData = await loginAndGetAuthToken(sender_id);
             authToken = loginData.authToken;
             userId = loginData.userId;
             roomManager.setUserAuthToken(sender_id, authToken);
@@ -94,7 +94,6 @@ router.post('/', async (req, res) => {
                 roomManager.setUserRoomId(sender_id, room_id);
 
                 console.log(`--- [userToAgent] --- Live chat room created successfully with ID: ${liveChatRoomId}`);
-
             } catch (error) {
                 console.error('--- [userToAgent] --- Error creating Omnichannel contact or live chat room:', error.message);
                 return res.status(500).send('Failed to create Omnichannel contact or live chat room.');

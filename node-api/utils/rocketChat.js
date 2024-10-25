@@ -10,6 +10,33 @@ const axios = require('axios');
 require('dotenv').config();
 const roomManager = require('../utils/roomManager');
 const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
+// Function to retrieve the username based on userId
+
+async function getUsernameById(userId) {
+    try {
+        const headers = {
+            'X-Auth-Token': process.env.AUTH_TOKEN_ADMIN,
+            'X-User-Id': process.env.USER_ID_ADMIN
+        };
+
+        const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/users.info`, {
+            headers,
+            params: { userId }
+        });
+
+        if (response.data.success) {
+            const username = response.data.user.username;
+            console.log(`--- [rocketChat.js] --- Retrieved username "${username}" for userId "${userId}"`);
+            return username;
+        } else {
+            console.error(`--- [rocketChat.js] --- Failed to retrieve username:`, response.data.error);
+            throw new Error(response.data.error);
+        }
+    } catch (error) {
+        console.error(`--- [rocketChat.js] --- Error retrieving username for userId ${userId}:`, error.message);
+        throw error;
+    }
+}
 
 async function getUserRole(userId) {
     try {
@@ -43,8 +70,9 @@ async function getUserRole(userId) {
 
 
 // Function to login a user and get their auth token (using the known default password)
-async function loginAndGetAuthToken(username) {
+async function loginAndGetAuthToken(userId) {
     try {
+        const username = await getUsernameById(userId);
         const response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/login`, {
             user: username,
             password: 'Passw0rd!'  // Default password for regular and agent users
@@ -59,21 +87,22 @@ async function loginAndGetAuthToken(username) {
             throw new Error(response.data.message);
         }
     } catch (error) {
-        console.error(`--- [rocketChat.js] --- Error logging in user ${username}:`, error.response ? error.response.data : error.message);
+        console.error(`--- [rocketChat.js] --- Error logging in user ${userId}:`, error.message);
         throw error;
     }
 }
 
-// Function to get authentication headers dynamically based on the user
-async function getAuthHeaders(senderId, senderUsername) {
+
+// Function to get authentication headers dynamically based on the userId
+async function getAuthHeaders(userId) {
     try {
         // Use pre-stored credentials for admin and rocket.cat
-        if (senderId === process.env.USER_ID_ADMIN) {
+        if (userId === process.env.USER_ID_ADMIN) {
             return {
                 'X-Auth-Token': process.env.AUTH_TOKEN_ADMIN,
                 'X-User-Id': process.env.USER_ID_ADMIN
             };
-        } else if (senderId === process.env.USER_ID_ROCKETCAT) {
+        } else if (userId === process.env.USER_ID_ROCKETCAT) {
             return {
                 'X-Auth-Token': process.env.AUTH_TOKEN_ROCKETCAT,
                 'X-User-Id': process.env.USER_ID_ROCKETCAT
@@ -81,17 +110,18 @@ async function getAuthHeaders(senderId, senderUsername) {
         }
 
         // For regular users or agents, login and retrieve their tokens
-        console.log(`--- [rocketChat.js] --- Fetching token for user: ${senderUsername}`);
-        const { authToken, userId } = await loginAndGetAuthToken(senderUsername);
+        console.log(`--- [rocketChat.js] --- Fetching token for user ID: ${userId}`);
+        const { authToken, userId: loggedInUserId } = await loginAndGetAuthToken(userId);
         return {
             'X-Auth-Token': authToken,
-            'X-User-Id': userId
+            'X-User-Id': loggedInUserId
         };
     } catch (error) {
         console.error('--- [rocketChat.js] --- Failed to get authentication headers:', error.message);
         throw error;
     }
 }
+
 
 
 // Function to create Omnichannel contact dynamically
@@ -115,8 +145,6 @@ async function createOmnichannelContact(authToken, userId, userToken, senderUser
         throw error;
     }
 }
-
-
 
 // Function to dynamically create LiveChat room based on sender
 async function createLiveChatRoom(authToken, userId, userToken) {
@@ -164,25 +192,22 @@ async function sendMessage(channel, text, authToken, userId, isSystemMessage = f
     }
 }
 
-
 // Function to dynamically send a message from agent to agent's room with rocket.cat
 async function sendToRocketCatWithAgent(messageText, agentId) {
     try {
-        const headers = getAuthHeaders(agentId); // Using agent credentials
-
-        // Here we try two different channel formats to send the message
+        const headers = await getAuthHeaders(agentId); // Only needs agent ID
+        console.log(`--- [rocketChat.js] --- Attempting to send message to rocket.cat for agent ${agentId}`);
+        console.log(`--- [rocketChat.js] --- Using AUTH_TOKEN: ${headers['X-Auth-Token']}`);
+        console.log(`--- [rocketChat.js] --- Using USER_ID: ${headers['X-User-Id']}`);
+        
         let channel1 = `rocket.cat${agentId}`;
         let channel2 = `${agentId}rocket.cat`;
 
-        // Check if message is already from rocket.cat
         if (agentId === process.env.USER_ID_ROCKETCAT) {
             console.log('--- [rocketChat.js] --- Message is already from rocket.cat, not sending again to avoid loop.');
             return; // Avoid loop
         }
 
-        console.log(`--- [rocketChat.js] --- Attempting to send message to rocket.cat for agent ${agentId}`);
-        
-        // Try first channel format
         console.log(`--- [rocketChat.js] --- Sending message to channel (format 1): ${channel1}`);
         let response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
             text: messageText,
@@ -190,7 +215,6 @@ async function sendToRocketCatWithAgent(messageText, agentId) {
         }, { headers });
 
         if (!response.data.success) {
-            // If the first format fails, try the second
             console.log(`--- [rocketChat.js] --- First channel format failed: ${channel1}, trying ${channel2}`);
             response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
                 text: messageText,
@@ -207,6 +231,21 @@ async function sendToRocketCatWithAgent(messageText, agentId) {
         console.error('--- [rocketChat.js] --- Error sending message to agent room with rocket.cat:', error.response ? error.response.data : error.message);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function sendToUserWithRocketCat(messageText) {
     try {
@@ -309,6 +348,7 @@ async function closeRoom(userId) {
 
 
 module.exports = { 
+    getUsernameById,
     getUserRole,
     handleIncomingMessage,
 	loginAndGetAuthToken,
