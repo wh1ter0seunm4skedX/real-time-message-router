@@ -1,65 +1,53 @@
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
-const { sendToRocketCatWithAgent, loginAndGetAuthToken } = require('../utils/rocketChat');
+const { loginAndGetAuthToken, getUserRole } = require('../utils/rocketChat');
 const roomManager = require('../utils/roomManager');
-let lastProcessedAgentMessageId = null;
+const ROCKET_CHAT_URL = process.env.ROCKET_CHAT_URL;
 
 router.post('/', async (req, res) => {
     console.log('--- [agentToUser] --- Omnichannel webhook from agent was triggered.');
 
-    const { messages } = req.body;
+    const { visitor, agent, messages } = req.body;
 
     if (Array.isArray(messages) && messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];  // Get the latest message
-        const messageText = lastMessage.msg || "No message";  // Extract message text
-        const senderId = (lastMessage.u && lastMessage.u._id) || "unknown";  // Get sender's ID
-        const senderUsername = (lastMessage.u && lastMessage.u.username) || undefined;  // Get sender's username
-        const messageId = lastMessage._id;  // Get message ID
-        const isSystemMessage = lastMessage.t || false;  // Check if it's a system message
+        const lastMessage = messages[messages.length - 1];
+        const messageText = lastMessage.msg || "No message";  
+        const senderId = lastMessage.u._id || "unknown";  
+        const liveChatRoomId = lastMessage.rid;
+        const agentId = agent._id;
+        const username = visitor.name;
 
-        console.log(`--- [agentToUser] --- Received message details: messageText="${messageText}", senderId="${senderId}", messageId="${messageId}", isSystemMessage="${isSystemMessage}"`);
+        // Log the extracted details
+        console.log(`--- [agentToUser] --- Extracted details:`);
+        console.log(`Agent ID: ${agentId}`);
+        console.log(`Username: ${username}`);
+        console.log(`Live Chat Room ID: ${liveChatRoomId}`);
+        console.log(`Message Text: "${messageText}"`);
 
-        // Check for duplicate messages
-        if (messageId === lastProcessedAgentMessageId) {
-            console.log('--- [agentToUser] --- Duplicate message received from agent, ignoring.');
-            return res.status(200).send('Duplicate message ignored.');
-        }
-
-        lastProcessedAgentMessageId = messageId;
-
-        // Ignore system messages
-        if (isSystemMessage) {
-            console.log('--- [agentToUser] --- System message received, ignoring.');
-            return res.status(200).send('System message ignored.');
-        }
-
-        // Ensure senderUsername is not undefined
-        if (!senderUsername) {
-            console.log('--- [agentToUser] --- Sender username is missing or undefined. Cannot forward the message.');
-            return res.status(400).send('Sender username is missing. Cannot forward message to rocket.cat.');
-        }
-
-        // Check if the agent's authToken is already captured
-        let agentAuthToken = roomManager.getAgentAuthToken(senderId);
-        if (!agentAuthToken) {
-            console.log('--- [agentToUser] --- No auth token found for agent, logging in...');
-            const loginData = await loginAndGetAuthToken(senderUsername);
-            agentAuthToken = loginData.authToken;
-            roomManager.setAgentAuthToken(senderId, agentAuthToken);
-        } else {
-            console.log('--- [agentToUser] --- Auth token found for agent.');
-        }
-
-        // Forward the message to rocket.cat
+        // Step 1: Fetch the user's ID using their username via the Rocket.Chat API
         try {
-            await sendToRocketCatWithAgent(messageText, senderId);
-            console.log(`--- [agentToUser] --- Message forwarded to rocket.cat: "${messageText}"`);
-            res.status(200).send('Message forwarded to rocket.cat.');
+            const headers = {
+                'X-Auth-Token': process.env.AUTH_TOKEN_ADMIN,
+                'X-User-Id': process.env.USER_ID_ADMIN
+            };
+            
+            const response = await axios.get(`${ROCKET_CHAT_URL}/api/v1/users.info?username=${username}`, { headers });
+            
+            if (response.data.success) {
+                const userId = response.data.user._id;
+                console.log(`--- [agentToUser] --- Retrieved User ID: ${userId}`);
+            } else {
+                console.log(`--- [agentToUser] --- Failed to retrieve user info: ${response.data.error}`);
+            }
         } catch (error) {
-            console.error('--- [agentToUser] --- Error forwarding message to rocket.cat:', error.message);
-            res.status(500).send('Failed to forward message to rocket.cat.');
+            console.error('--- [agentToUser] --- Error retrieving user info:', error.message);
+            return res.status(500).send('Error retrieving user info.');
         }
 
+        // Proceed with your other logic here...
+
+        res.status(200).send('User ID retrieved and logged successfully.');
     } else {
         console.log('--- [agentToUser] --- Invalid message or room type received.');
         res.status(200).send('Invalid message or room type.');
