@@ -21,6 +21,18 @@ router.post('/', async (req, res) => {
 
     console.log(`--- [userToAgent] --- Received message details: sender_id="${sender_id}", sender_username="${sender_username}", message_text="${message_text}", room_id="${room_id}", message_id="${message_id}"`);
 
+    // Prevent loop by skipping messages from the bot itself
+    if (sender_username === botUsername) {
+        console.log(`--- [userToAgent] --- Loop prevention: Message from ${botUsername} detected. Skipping processing to prevent a message loop.`);
+        return res.status(200).send('Loop prevention: Message from bot ignored.');
+    }
+
+    // Ignore messages marked as system messages
+    if (isSystemMessage) {
+        console.log('--- [userToAgent] --- Message marked as system message, ignoring.');
+        return res.status(200).send('System message ignored.');
+    }
+
     // Step 1: Check user role before proceeding
     try {
         const roles = await getUserRole(sender_id);
@@ -33,14 +45,10 @@ router.post('/', async (req, res) => {
         return res.status(500).send('Error verifying user role.');
     }
 
-    if (message_id === lastMessageId) {
-        console.log('--- [userToAgent] --- Duplicate message received, ignoring.');
+    // Avoid processing duplicate messages by comparing lastProcessedUserMessageId
+    if (message_id === lastProcessedUserMessageId) {
+        console.log('--- [userToAgent] --- Duplicate message received from user, ignoring.');
         return res.status(200).send('Duplicate message ignored.');
-    }
-
-    if (sender_username === botUsername || isSystemMessage) {
-        console.log('--- [userToAgent] --- Message sent by bot or marked as system message, ignoring to prevent loop.');
-        return res.status(200).send('Bot message or system message ignored.');
     }
 
     lastMessageId = message_id;

@@ -232,59 +232,60 @@ async function sendToRocketCatWithAgent(messageText, agentId) {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-async function sendToUserWithRocketCat(messageText) {
+// Function to send a message from rocket.cat to a user's room after logging in dynamically
+async function sendToUserWithRocketCat(messageText, userRoomId) {
     try {
-        const userRoomId = roomManager.getUserRoomId();
-
         if (!userRoomId) {
-            console.error('--- [rocketChat.js] --- User room ID is not set. Cannot send message.');
+            console.error('--- [rocketChat.js] --- User room ID is not provided. Cannot send message.');
             return false;
         }
 
+        // Step 1: Log in as rocket.cat to get the auth token
+        let authToken, userId;
+        try {
+            const loginResponse = await axios.post(`${ROCKET_CHAT_URL}/api/v1/login`, {
+                user: 'rocket.cat',
+                password: 'Passw0rd!'
+            });
+
+            if (loginResponse.data && loginResponse.data.status === 'success') {
+                authToken = loginResponse.data.data.authToken;
+                userId = loginResponse.data.data.userId;
+                console.log(`--- [rocketChat.js] --- Logged in as rocket.cat. Auth token acquired.`);
+            } else {
+                console.error('--- [rocketChat.js] --- Login failed for rocket.cat.');
+                return false;
+            }
+        } catch (error) {
+            console.error('--- [rocketChat.js] --- Error logging in as rocket.cat:', error.message);
+            return false;
+        }
+
+        // Step 2: Set up headers with the retrieved auth token and user ID
         const headers = {
-            'X-Auth-Token': process.env.AUTH_TOKEN_ROCKETCAT,
-            'X-User-Id': process.env.USER_ID_ROCKETCAT
+            'X-Auth-Token': authToken,
+            'X-User-Id': userId
         };
 
-        console.log(`--- [rocketChat.js] --- Attempting to send message as rocket.cat`);
-        console.log(`--- [rocketChat.js] --- Using AUTH_TOKEN: ${process.env.AUTH_TOKEN_ROCKETCAT}`);
-        console.log(`--- [rocketChat.js] --- Using USER_ID: ${process.env.USER_ID_ROCKETCAT}`);
+        console.log(`--- [rocketChat.js] --- Sending message to user room ID: ${userRoomId} with rocket.cat`);
 
-        // Send using the userRoomId directly
-        const channel = userRoomId;
-        console.log(`--- [rocketChat.js] --- Sending message to user room with rocket.cat: ${channel}`);
-        
-        let response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
+        // Step 3: Send the message to the specified user room ID
+        const response = await axios.post(`${ROCKET_CHAT_URL}/api/v1/chat.postMessage`, {
             text: messageText,
-            channel: channel
+            channel: userRoomId
         }, { headers });
 
         if (response.data && response.data.success) {
-            console.log(`--- [rocketChat.js] --- Message successfully sent to user room: ${channel}`);
+            console.log(`--- [rocketChat.js] --- Message successfully sent to user room: ${userRoomId}`);
             return true;  // Message sent successfully
         } else {
             console.error(`--- [rocketChat.js] --- Error sending message: ${JSON.stringify(response.data)}`);
+            return false;  // Return false if the attempt fails
         }
     } catch (error) {
         console.error('--- [rocketChat.js] --- Error sending message to user room with rocket.cat:', error.response ? error.response.data : error.message);
+        return false;
     }
-
-    return false;  // Return false if the attempt fails
 }
 
 // Function to handle incoming message and reset inactivity timer
